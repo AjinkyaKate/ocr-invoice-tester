@@ -1,0 +1,11 @@
+invoice_id,file_path,ground_truth_path,page_count,source_url
+invoice_01,data/invoices/invoice_01.pdf,data/ground_truth/invoice_01.txt,,
+invoice_02,data/invoices/invoice_02.pdf,data/ground_truth/invoice_02.txt,,
+invoice_03,data/invoices/invoice_03.pdf,data/ground_truth/invoice_03.txt,,
+invoice_04,data/invoices/invoice_04.pdf,data/ground_truth/invoice_04.txt,,
+invoice_05,data/invoices/invoice_05.pdf,data/ground_truth/invoice_05.txt,,
+invoice_06,data/invoices/invoice_06.pdf,data/ground_truth/invoice_06.txt,,
+invoice_07,data/invoices/invoice_07.pdf,data/ground_truth/invoice_07.txt,,
+invoice_08,data/invoices/invoice_08.pdf,data/ground_truth/invoice_08.txt,,
+invoice_09,data/invoices/invoice_09.pdf,data/ground_truth/invoice_09.txt,,
+invoice_10,data/invoices/invoice_10.pdf,data/ground_truth/invoice_10.txt,,

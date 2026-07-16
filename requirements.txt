@@ -1,0 +1,8 @@
+requests>=2.32.0
+python-dotenv>=1.0.1
+boto3>=1.34.0
+pytest>=8.0.0
+
+# Optional local OCR baseline. Requires the system tesseract binary too.
+pytesseract>=0.3.13
+Pillow>=10.0.0

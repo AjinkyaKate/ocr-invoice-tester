@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/
+work/
+outputs/*
+!outputs/.gitkeep
+!outputs/evaluation_results_template.csv
+!outputs/provider_summary_template.csv
+data/invoices/*
+!data/invoices/.gitkeep
+data/ground_truth/*
+!data/ground_truth/.gitkeep

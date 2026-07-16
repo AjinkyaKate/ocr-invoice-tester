@@ -1,0 +1,262 @@
+{
+  "info": {
+    "name": "OCR Evaluation POC",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "OCR.space file upload",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "apikey",
+            "value": "{{ocr_space_key}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": []
+            },
+            {
+              "key": "language",
+              "value": "eng",
+              "type": "text"
+            },
+            {
+              "key": "isOverlayRequired",
+              "value": "false",
+              "type": "text"
+            },
+            {
+              "key": "OCREngine",
+              "value": "2",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://api.ocr.space/parse/image",
+          "protocol": "https",
+          "host": [
+            "api",
+            "ocr",
+            "space"
+          ],
+          "path": [
+            "parse",
+            "image"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Azure Read analyze",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const location = pm.response.headers.get('Operation-Location');",
+              "if (location) pm.environment.set('azure_operation_location', location);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Ocp-Apim-Subscription-Key",
+            "value": "{{azure_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"base64Source\": \"{{invoice_base64}}\"\n}"
+        },
+        "url": {
+          "raw": "{{azure_endpoint}}/documentintelligence/documentModels/prebuilt-read:analyze?_overload=analyzeDocument&api-version=2024-11-30",
+          "host": [
+            "{{azure_endpoint}}"
+          ],
+          "path": [
+            "documentintelligence",
+            "documentModels",
+            "prebuilt-read:analyze"
+          ],
+          "query": [
+            {
+              "key": "_overload",
+              "value": "analyzeDocument"
+            },
+            {
+              "key": "api-version",
+              "value": "2024-11-30"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Azure Read poll result",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Ocp-Apim-Subscription-Key",
+            "value": "{{azure_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{azure_operation_location}}",
+          "host": [
+            "{{azure_operation_location}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Google Vision DOCUMENT_TEXT_DETECTION",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{google_access_token}}"
+          },
+          {
+            "key": "x-goog-user-project",
+            "value": "{{google_project_id}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json; charset=utf-8"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requests\": [\n    {\n      \"image\": {\n        \"content\": \"{{invoice_base64}}\"\n      },\n      \"features\": [\n        {\n          \"type\": \"DOCUMENT_TEXT_DETECTION\"\n        }\n      ]\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "https://vision.googleapis.com/v1/images:annotate",
+          "protocol": "https",
+          "host": [
+            "vision",
+            "googleapis",
+            "com"
+          ],
+          "path": [
+            "v1",
+            "images:annotate"
+          ]
+        }
+      }
+    },
+    {
+      "name": "AWS Textract DetectDocumentText",
+      "request": {
+        "auth": {
+          "type": "awsv4",
+          "awsv4": [
+            {
+              "key": "accessKey",
+              "value": "{{aws_access_key}}",
+              "type": "string"
+            },
+            {
+              "key": "secretKey",
+              "value": "{{aws_secret_key}}",
+              "type": "string"
+            },
+            {
+              "key": "sessionToken",
+              "value": "{{aws_session_token}}",
+              "type": "string"
+            },
+            {
+              "key": "region",
+              "value": "{{aws_region}}",
+              "type": "string"
+            },
+            {
+              "key": "service",
+              "value": "textract",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-amz-json-1.1"
+          },
+          {
+            "key": "X-Amz-Target",
+            "value": "Textract.DetectDocumentText"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"Document\": {\n    \"Bytes\": \"{{invoice_base64}}\"\n  }\n}"
+        },
+        "url": {
+          "raw": "https://textract.{{aws_region}}.amazonaws.com/",
+          "protocol": "https",
+          "host": [
+            "textract",
+            "{{aws_region}}",
+            "amazonaws",
+            "com"
+          ],
+          "path": [
+            ""
+          ]
+        }
+      }
+    },
+    {
+      "name": "Mistral OCR document URL",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{mistral_api_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model\": \"mistral-ocr-latest\",\n  \"document\": {\n    \"type\": \"document_url\",\n    \"document_url\": \"{{invoice_public_url}}\"\n  },\n  \"table_format\": \"markdown\"\n}"
+        },
+        "url": {
+          "raw": "https://api.mistral.ai/v1/ocr",
+          "protocol": "https",
+          "host": [
+            "api",
+            "mistral",
+            "ai"
+          ],
+          "path": [
+            "v1",
+            "ocr"
+          ]
+        }
+      }
+    }
+  ]
+}

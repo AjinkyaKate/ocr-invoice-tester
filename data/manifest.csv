@@ -1,0 +1,2 @@
+invoice_id,file_path,ground_truth_path,page_count,source_url
+invoice_01,data/invoices/invoice_01.pdf,data/ground_truth/invoice_01.txt,,
