@@ -43,3 +43,7 @@ next-env.d.ts
 
 # local dev database
 /.data
+
+# eval output
+/testset/last-run.json
+/testset/run-*.json
