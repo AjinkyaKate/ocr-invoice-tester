@@ -40,6 +40,7 @@ function Home() {
   const [dragging, setDragging] = useState(false);
   const [morphId, setMorphId] = useState<string | null>(null); // the drop zone becomes this invoice's image
   const fileRef = useRef<HTMLInputElement>(null);
+  const camRef = useRef<HTMLInputElement>(null);
 
   const take = async (files: File[]) => {
     const imgs = files.filter((f) => f.type.startsWith("image/"));
@@ -55,11 +56,20 @@ function Home() {
         onClick={() => fileRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); take(Array.from(e.dataTransfer.files)); }}
-        className={`flex w-full flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-20 text-center transition-colors ${dragging ? "border-foreground bg-secondary" : "border-border hover:bg-secondary"}`}>
-        <motion.span animate={{ y: dragging ? -3 : 0 }} className="text-foreground">{dragging ? "Drop to read" : "Drop invoice images"}</motion.span>
-        <span className="mt-1 text-sm text-muted-foreground">or click to choose</span>
+        className={`flex w-full flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-20 text-center pointer-coarse:py-12 transition-colors ${dragging ? "border-foreground bg-secondary" : "border-border hover:bg-secondary"}`}>
+        {/* mouse: drop zone; touch: camera or photo library */}
+        <span className="pointer-coarse:hidden">
+          <motion.span animate={{ y: dragging ? -3 : 0 }} className="block text-foreground">{dragging ? "Drop to read" : "Drop invoice images"}</motion.span>
+          <span className="mt-1 block text-sm text-muted-foreground">or click to choose</span>
+        </span>
+        <span className="hidden w-full max-w-xs flex-col items-center gap-3 pointer-coarse:flex">
+          <span className="text-foreground">Add an invoice</span>
+          <span onClick={(e) => { e.stopPropagation(); camRef.current?.click(); }} className="w-full rounded-xl bg-foreground px-4 py-3 text-sm text-background">Take a photo</span>
+          <span className="text-sm text-muted-foreground">or choose from photos</span>
+        </span>
       </motion.button>
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { take(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
+      <input ref={camRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { take(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
 
       {invoices.length > 0 && (
         <section className="mt-12">
@@ -96,12 +106,13 @@ function Row({ inv }: { inv: Invoice }) {
       </motion.div>
       <div className="min-w-0 flex-1">
         <p className={`truncate text-sm ${inv.status === "rejected" ? "text-faint line-through" : "text-foreground"}`}>{inv.edits.vendor ?? inv.vendor.value ?? inv.name}</p>
-        <p className="text-xs text-faint"><Ago iso={inv.receivedAt} /></p>
+        <p className="text-xs text-faint"><Ago iso={inv.receivedAt} /><span className="sm:hidden"> · {status}</span></p>
       </div>
-      <div className={`flex items-center gap-2 text-xs ${inv.status === "failed" ? "text-destructive" : open ? "text-foreground" : "text-muted-foreground"}`}>
+      <div className={`hidden items-center gap-2 text-xs sm:flex ${inv.status === "failed" ? "text-destructive" : open ? "text-foreground" : "text-muted-foreground"}`}>
         {busy && <BarsTheme state="thinking" volume={0.5} size={14} />}{status}
       </div>
-      <span className="w-24 text-right text-sm tabular-nums text-foreground">{money(inv.edits.total !== undefined ? Number(inv.edits.total) : inv.total.value, inv.currency)}</span>
+      {busy && <BarsTheme state="thinking" volume={0.5} size={14} className="sm:hidden" />}
+      <span className="shrink-0 text-right text-sm tabular-nums text-foreground sm:w-24">{money(inv.edits.total !== undefined ? Number(inv.edits.total) : inv.total.value, inv.currency)}</span>
     </button>
   );
 }

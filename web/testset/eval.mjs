@@ -51,7 +51,11 @@ for (const t of tests) {
   const t0 = Date.now();
   try {
     const ocr = await post("/api/read", { image });
-    const u = await post("/api/understand", { image, lines: ocr.lines });
+    const r2 = await fetch(BASE + "/api/understand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image, lines: ocr.lines }) });
+    const events = (await r2.text()).split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    const fin = events.find((x) => x.type === "done");
+    if (!fin) throw new Error(events.at(-1)?.message ?? "no result");
+    const u = fin.data;
     const checks = [];
     if (e.vendor) checks.push(["vendor", (u.vendor.value ?? "").toLowerCase().includes(e.vendor.toLowerCase().replace(/[^a-z0-9 &-]/g, "").trim().split(" ")[0])]);
     if (e.number) checks.push(["number", (u.number.value ?? "").replace(/\s/g, "") === e.number.replace(/\s/g, "")]);

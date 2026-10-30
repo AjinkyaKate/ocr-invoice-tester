@@ -1,0 +1,132 @@
+[
+ {
+  "id": "invoice-1",
+  "score": "6/6",
+  "located": "5/5",
+  "s": "4",
+  "misses": "",
+  "got": {
+   "vendor": "Bradley-Andrade",
+   "number": "97159829",
+   "date": "09/18/2015",
+   "total": 978.12,
+   "items": [
+    889.2
+   ]
+  },
+  "want": {
+   "number": "97159829",
+   "date": "09/18/2015",
+   "vendor": "Bradley-Andrade 9879",
+   "total": 978.12,
+   "amounts": [
+    889.2
+   ]
+  }
+ },
+ {
+  "id": "invoice-4",
+  "score": "7/7",
+  "located": "6/6",
+  "s": "5",
+  "misses": "",
+  "got": {
+   "vendor": "Nichols-Barajas",
+   "number": "56014042",
+   "date": "10/01/2014",
+   "total": 65.45,
+   "items": [
+    11.5,
+    48
+   ]
+  },
+  "want": {
+   "number": "56014042",
+   "date": "10/01/2014",
+   "vendor": "Nichols-Barajas 3882",
+   "total": 65.45,
+   "amounts": [
+    11.5,
+    48
+   ]
+  }
+ },
+ {
+  "id": "receipt-2",
+  "score": "5/5",
+  "located": "4/4",
+  "s": "3",
+  "misses": "",
+  "got": {
+   "vendor": null,
+   "number": null,
+   "date": null,
+   "total": 91000,
+   "items": [
+    17500,
+    46000,
+    27500
+   ]
+  },
+  "want": {
+   "total": 91000,
+   "amounts": [
+    17500,
+    46000,
+    27500
+   ]
+  }
+ },
+ {
+  "id": "scan-1",
+  "score": "6/6",
+  "located": "5/5",
+  "s": "4",
+  "misses": "",
+  "got": {
+   "vendor": "BOOK TA _K (TAMAN DAYA) SDN BHD",
+   "number": "TD01167104",
+   "date": "25/12/2018 8:13:39 PM",
+   "total": 9,
+   "items": [
+    9
+   ]
+  },
+  "want": {
+   "number": "TD01167104",
+   "date": "25/12/2018",
+   "vendor": "BOOK",
+   "total": 9,
+   "amounts": [
+    9
+   ]
+  }
+ },
+ {
+  "id": "scan-2",
+  "score": "6/6",
+  "located": "7/7",
+  "s": "5",
+  "misses": "",
+  "got": {
+   "vendor": "INDAH GIFT & HOME DECO",
+   "number": "01",
+   "date": "19/10/2018 20:49:59",
+   "total": 60.3,
+   "items": [
+    10,
+    55.9,
+    -5.59
+   ]
+  },
+  "want": {
+   "date": "19/10/2018",
+   "vendor": "INDAH",
+   "total": 60.3,
+   "amounts": [
+    10,
+    55.9
+   ]
+  }
+ }
+]

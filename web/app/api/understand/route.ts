@@ -28,6 +28,7 @@ Rules:
 - vendor is the business that issued the document (the seller), not the buyer. Use its name only, not the address.
 - date as printed. invoice_number is the invoice, bill or receipt number.
 - Write numbers as plain JSON numbers, reading the document's own format: "444,60" with a decimal comma is 444.6; "1,080.00" is 1080; on Indonesian or similar receipts "60.000" means 60000.
+- qty is the quantity bought. Item codes, SKUs, barcodes and HSN codes printed next to an item are not quantities; if no quantity is printed, use null.
 - amount is the line total as printed (the net amount if both net and gross are shown). Copy what is printed; never fix the arithmetic.
 - A discount printed as its own line is an item with a negative amount. Payment lines (cash, card, change), totals and tax lines are not items.
 - total is the final amount payable. subtotal is the amount before tax, if printed. tax is the total tax, if printed.

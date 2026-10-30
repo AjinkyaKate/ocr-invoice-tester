@@ -27,3 +27,12 @@ export function toggleTheme() {
   document.documentElement.classList.toggle("dark", next);
   try { localStorage.setItem("theme", next ? "dark" : "light"); } catch {}
 }
+
+/** true when a CSS media query matches; false on the server. */
+export function useMedia(query: string) {
+  return useSyncExternalStore(
+    (cb) => { const m = matchMedia(query); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); },
+    () => matchMedia(query).matches,
+    () => false,
+  );
+}

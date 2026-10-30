@@ -6,6 +6,7 @@ import { actions, useInvoices } from "@/lib/invoices/store";
 import type { Box, Field, Invoice, Line } from "@/lib/invoices/types";
 import { ActionButton } from "@/components/ui/action-button";
 import { BarsTheme } from "@/components/ui/bars-theme";
+import { useMedia } from "./bits";
 import { go } from "./nav";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -25,6 +26,9 @@ export function ReviewView({ id }: { id: string }) {
   const inv = invoices.find((i) => i.id === id);
   const [hover, setHover] = useState<string | null>(null); // highlight key: "f:total", "i:3"
   const [focus, setFocus] = useState(0);
+  const [viewer, setViewer] = useState<{ key: string | null } | null>(null); // full-screen invoice, optionally focused on a value
+  const wide = useMedia("(min-width: 1024px)");
+  const touch = useMedia("(pointer: coarse)");
   const a = useMemo(() => (inv && ["review", "done", "rejected"].includes(inv.status) ? analyze(inv) : null), [inv]);
   const unresolved = useMemo(() => a?.unresolved ?? [], [a]);
   const flagRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -43,7 +47,7 @@ export function ReviewView({ id }: { id: string }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!inv || (e.target as HTMLElement).closest("input, textarea")) return;
-      if (e.key === "Escape") go(null);
+      if (e.key === "Escape") { if (viewer) setViewer(null); else go(null); return; }
       if (!editable || !a) return;
       const open = a.unresolved;
       if (["j", "k", "ArrowDown", "ArrowUp"].includes(e.key)) keyed.current = true;
@@ -99,7 +103,7 @@ export function ReviewView({ id }: { id: string }) {
       {/* one layout that changes shape: the invoice alone while it is read, then the invoice + details */}
       <motion.div layout transition={{ duration: 0.6, ease }} className={`mt-6 ${shown ? "grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" : "flex flex-col items-center"}`}>
         <motion.div layout transition={{ duration: 0.6, ease }} className={shown ? "lg:sticky lg:top-6 lg:self-start" : "flex w-full flex-col items-center"}>
-          <Doc inv={inv} shown={shown} final={!!a} lit={lit} setHover={setHover} />
+          <Doc inv={inv} shown={shown} final={!!a} lit={lit} setHover={setHover} compact={!!shown && !wide} onOpen={(key) => setViewer({ key })} />
           {!shown && <Status inv={inv} />}
         </motion.div>
 
@@ -123,7 +127,8 @@ export function ReviewView({ id }: { id: string }) {
             )}
 
             <motion.section variants={item}>
-              <Items inv={inv} shown={shown} live={live} cur={cur} editable={editable} lit={lit} setHover={setHover} rowRefs={rowRefs} />
+              <Items inv={inv} shown={shown} live={live} cur={cur} editable={editable} lit={lit} setHover={setHover} rowRefs={rowRefs}
+                onShow={touch || !wide ? (key) => setViewer({ key }) : undefined} />
             </motion.section>
           </motion.div>
         )}
@@ -133,14 +138,18 @@ export function ReviewView({ id }: { id: string }) {
         {editable && (
           <motion.div initial={{ y: 80 }} animate={{ y: 0 }} exit={{ y: 80 }} transition={{ duration: 0.45, ease, delay: 0.5 }}
             className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/90 backdrop-blur">
-            <div className="mx-auto flex max-w-6xl items-center justify-end gap-2 px-4 py-3 sm:px-6">
-              <button onClick={() => { actions.reject(inv.id); go(null); }} className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground">Reject</button>
-              <ActionButton size="sm" disabled={unresolved.length > 0} minPendingMs={400}
+            <div className="mx-auto flex max-w-6xl items-center justify-end gap-2 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-6">
+              <button onClick={() => { actions.reject(inv.id); go(null); }} className="flex-1 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground sm:flex-none">Reject</button>
+              <ActionButton size="sm" className="flex-[2] sm:flex-none" disabled={unresolved.length > 0} minPendingMs={400}
                 idleLabel={unresolved.length ? `${unresolved.length} to check` : "Approve"} pendingLabel="Saving…" successLabel="Approved"
                 onAction={async () => { await new Promise((r) => setTimeout(r, 250)); approve(); }} />
             </div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {viewer && <Viewer inv={inv} shown={shown} focusKey={viewer.key} onClose={() => setViewer(null)} />}
       </AnimatePresence>
     </div>
   );
@@ -164,8 +173,8 @@ function Hero({ inv, shown, a, live, cur, editable, lit, setHover }: { inv: Invo
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-sm text-foreground">{shown.vendor ? initials(shown.vendor) : <BarsTheme state="thinking" volume={0.4} size={14} />}</span>
           <div className="min-w-0">
             <p {...hl("vendor")} className={`truncate text-foreground ${hl("vendor").className}`}>{shown.vendor ? edit("vendor", shown.vendor, shown.vendor) : live ? <Pending w="w-40" /> : "Unknown vendor"}</p>
-            <p className="truncate text-sm text-muted-foreground">
-              <span {...hl("number")}>{shown.number ? <>Invoice #{edit("number", shown.number, shown.number)}</> : live ? <Pending w="w-20" /> : "No invoice number"}</span>
+            <p className="text-sm text-muted-foreground sm:truncate">
+              <span {...hl("number")}>{shown.number ? <>Invoice #{edit("number", shown.number.replace(/^(no\.?|#)\s*/i, ""), shown.number)}</> : live ? <Pending w="w-20" /> : "No invoice number"}</span>
               <span className="text-faint"> · </span>
               <span {...hl("date")}>{date ? edit("date", date, shown.date) : live ? <Pending w="w-20" /> : "No date"}</span>
             </p>
@@ -173,7 +182,7 @@ function Hero({ inv, shown, a, live, cur, editable, lit, setHover }: { inv: Invo
         </div>
         <StatusChip live={live} open={open} done={inv.status === "done"} />
       </div>
-      <p {...hl("total")} className={`mt-6 text-4xl tracking-tight tabular-nums text-foreground ${hl("total").className}`}>
+      <p {...hl("total")} className={`mt-5 text-[2.5rem] leading-tight tracking-tight sm:text-4xl tabular-nums text-foreground ${hl("total").className}`}>
         {shown.total !== null ? edit("total", money(shown.total, cur), shown.total, true) : live ? <Pending w="w-44" /> : "–"}
       </p>
       {(shown.subtotal !== null || shown.tax !== null) && (
@@ -219,26 +228,38 @@ function Checks({ a }: { a: Analysis }) {
   );
 }
 
-/** Line items as an aligned table; every value click-to-edit once final. */
-function Items({ inv, shown, live, cur, editable, lit, setHover, rowRefs }: { inv: Invoice; shown: Shown; live: boolean; cur?: string | null; editable: boolean; lit: string | null; setHover: (k: string | null) => void; rowRefs: React.RefObject<Record<string, HTMLDivElement | null>> }) {
-  const cols = "grid grid-cols-[minmax(0,1fr)_3rem_5.5rem_6.5rem] items-start gap-x-3";
+/** Line items: an aligned table on wide screens, two-line rows on phones. Every value click-to-edit once final. */
+function Items({ inv, shown, live, cur, editable, lit, setHover, rowRefs, onShow }: { inv: Invoice; shown: Shown; live: boolean; cur?: string | null; editable: boolean; lit: string | null; setHover: (k: string | null) => void; rowRefs: React.RefObject<Record<string, HTMLDivElement | null>>; onShow?: (key: string) => void }) {
+  const cols = "sm:grid sm:grid-cols-[minmax(0,1fr)_3rem_5.5rem_6.5rem] sm:items-start sm:gap-x-3";
   const field = (i: number, k: "desc" | "qty" | "rate" | "amount", display: string, raw: string | number | null) =>
     live ? <>{display}</> : <Editable inv={inv} k={`line:${i}:${k}`} display={display} raw={raw} numeric={k !== "desc"} enabled={editable} />;
+  const located = (i: number) => (shown.lines[i]?.lines?.length ?? 0) > 0;
   if (!shown.items.length) return live ? <div className="space-y-3"><Pending w="w-full" /><Pending w="w-3/4" /></div> : <p className="text-sm text-faint">No items found.</p>;
   return (
     <div className="text-sm">
-      <div className={`${cols} border-b border-border pb-2 text-xs text-faint`}>
+      <div className={`hidden border-b border-border pb-2 text-xs text-faint ${cols}`}>
         <span>Item</span><span className="text-right">Qty</span><span className="text-right">Price</span><span className="text-right">Amount</span>
       </div>
       <AnimatePresence initial={false}>
         {shown.items.map((r, i) => (
           <motion.div key={i} ref={(el) => { rowRefs.current[`i:${i}`] = el; }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease }}
             onMouseEnter={() => setHover(`i:${i}`)} onMouseLeave={() => setHover(null)}
-            className={`${cols} -mx-2 rounded-md border-b border-border px-2 py-2.5 transition-colors last:border-b-0 ${lit === `i:${i}` ? "bg-secondary" : ""}`}>
-            <span className="min-w-0 text-foreground">{field(i, "desc", r.desc, r.desc)}</span>
-            <span className="text-right tabular-nums text-muted-foreground">{field(i, "qty", r.qty === null ? "–" : `${r.qty}`, r.qty)}</span>
-            <span className="text-right tabular-nums text-muted-foreground">{field(i, "rate", r.rate === null ? "–" : money(r.rate, cur), r.rate)}</span>
-            <span className="text-right tabular-nums text-foreground" title={r.derived ? "Worked out as qty × price" : undefined}>{field(i, "amount", money(r.amount, cur), r.amount)}</span>
+            // on touch, tapping a row (not a value) shows where it is on the invoice
+            onClick={(e) => { if (onShow && located(i) && !(e.target as HTMLElement).closest("button, input")) onShow(`i:${i}`); }}
+            className={`-mx-2 rounded-md border-b border-border px-2 py-3 transition-colors last:border-b-0 sm:py-2.5 ${cols} ${lit === `i:${i}` ? "bg-secondary" : ""} ${onShow && located(i) ? "cursor-pointer active:bg-secondary" : ""}`}>
+            {/* phones: description, then qty × price on the left and the amount on the right */}
+            <div className="flex items-start justify-between gap-3 sm:contents">
+              <span className="min-w-0 text-foreground">{field(i, "desc", r.desc, r.desc)}</span>
+              <span className="hidden text-right tabular-nums text-muted-foreground sm:block">{field(i, "qty", r.qty === null ? "–" : `${r.qty}`, r.qty)}</span>
+              <span className="hidden text-right tabular-nums text-muted-foreground sm:block">{field(i, "rate", r.rate === null ? "–" : money(r.rate, cur), r.rate)}</span>
+              <span className="shrink-0 text-right tabular-nums text-foreground" title={r.derived ? "Worked out as qty × price" : undefined}>{field(i, "amount", money(r.amount, cur), r.amount)}</span>
+            </div>
+            {(r.qty !== null || r.rate !== null) && (
+              <p className="mt-0.5 flex items-center gap-2 text-xs text-faint sm:hidden">
+                <span>{field(i, "qty", r.qty === null ? "–" : `${r.qty}`, r.qty)} × {field(i, "rate", r.rate === null ? "–" : money(r.rate, cur), r.rate)}</span>
+                {onShow && located(i) && <span className="ms-auto text-[11px]">Show on invoice ›</span>}
+              </p>
+            )}
           </motion.div>
         ))}
       </AnimatePresence>
@@ -250,7 +271,7 @@ function Items({ inv, shown, live, cur, editable, lit, setHover, rowRefs }: { in
  * The invoice image on a soft "desk". While it is read: a scan beam, then every piece of text OCR found pops in
  * and shimmers. As fields arrive, the place each value was read from lights up.
  */
-function Doc({ inv, shown, final, lit, setHover }: { inv: Invoice; shown: Shown | null; final: boolean; lit: string | null; setHover: (k: string | null) => void }) {
+function Doc({ inv, shown, final, lit, setHover, compact, onOpen }: { inv: Invoice; shown: Shown | null; final: boolean; lit: string | null; setHover: (k: string | null) => void; compact: boolean; onOpen: (key: string | null) => void }) {
   const boxes: [string, Box][] = [];
   if (shown) {
     for (const k of ["vendor", "number", "date", "subtotal", "tax", "total"] as FieldKey[]) { const f = shown.fields[k]; const b = f && boxFor(inv, f.lines); if (b) boxes.push([`f:${k}`, b]); }
@@ -259,10 +280,12 @@ function Doc({ inv, shown, final, lit, setHover }: { inv: Invoice; shown: Shown 
   const found = useMemo(() => [...(inv.ocr?.lines ?? [])].sort((p, q) => p.box[1] - q.box[1] || p.box[0] - q.box[0]), [inv.ocr]);
 
   return (
-    <div className={`w-full rounded-2xl bg-secondary/70 ${shown ? "p-4 sm:p-6" : "p-6 sm:p-10"} transition-[padding] duration-500`}>
-      <motion.div layoutId={`doc-${inv.id}`} transition={{ duration: 0.6, ease }} className="relative mx-auto w-fit max-w-full overflow-hidden rounded-md bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_-6px_rgba(0,0,0,0.12)]">
+    <div className={`relative w-full rounded-2xl bg-secondary/70 ${compact ? "p-3" : shown ? "p-4 sm:p-6" : "p-4 sm:p-10"} transition-[padding] duration-500`}>
+      <motion.div layoutId={`doc-${inv.id}`} transition={{ duration: 0.6, ease }} onClick={(e) => { if (final && !(e.target as HTMLElement).closest("button")) onOpen(null); }}
+        className={`relative mx-auto w-fit max-w-full overflow-hidden rounded-md bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_24px_-6px_rgba(0,0,0,0.12)] ${final ? "cursor-zoom-in" : ""} ${compact ? "max-h-[26dvh]" : ""}`}>
         {/* eslint-disable-next-line @next/next/no-img-element -- the user's own upload (data URL) */}
-        <img src={inv.image} alt={inv.name} className={`block h-auto w-auto max-w-full dark:brightness-[0.92] ${shown ? "max-h-[calc(100dvh-11rem)]" : "max-h-[62dvh]"}`} />
+        <img src={inv.image} alt={inv.name} className={`block h-auto w-auto max-w-full dark:brightness-[0.92] ${compact ? "" : shown ? "max-h-[calc(100dvh-11rem)]" : "max-h-[58dvh] sm:max-h-[62dvh]"}`} />
+        {compact && <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />}
 
         {inv.status === "reading" && <div className="scan-beam" />}
 
@@ -276,14 +299,81 @@ function Doc({ inv, shown, final, lit, setHover }: { inv: Invoice; shown: Shown 
         {boxes.map(([key, b]) => (
           <motion.button key={key} type="button" aria-label={`Show ${key}`}
             initial={{ opacity: 0, scale: 1.25 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease }}
-            onMouseEnter={() => setHover(key)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(key)}
+            onMouseEnter={() => setHover(key)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(key)} onClick={() => final && onOpen(key)}
             className={`absolute rounded-[3px] transition-colors duration-150 ${lit === key ? "bg-[#1100ff]/10 outline-2 outline-[#1100ff]" : final ? "outline-0 hover:bg-[#1100ff]/5" : "bg-[#1100ff]/10 outline outline-1 outline-[#1100ff]/60"}`}
             style={pos(b, 0.004)} />
         ))}
       </motion.div>
+      {compact && final && (
+        <button onClick={() => onOpen(null)} className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-foreground/85 px-3 py-1.5 text-xs text-background shadow-sm backdrop-blur">View invoice</button>
+      )}
     </div>
   );
 }
+
+/**
+ * Full-screen invoice: scroll and zoom, every value outlined; opened on a value it centres and highlights it.
+ * This is how phones see where a value came from (no hover on touch).
+ */
+function Viewer({ inv, shown, focusKey, onClose }: { inv: Invoice; shown: Shown | null; focusKey: string | null; onClose: () => void }) {
+  const boxes: [string, Box][] = [];
+  if (shown) {
+    for (const k of ["vendor", "number", "date", "subtotal", "tax", "total"] as FieldKey[]) { const f = shown.fields[k]; const b = f && boxFor(inv, f.lines); if (b) boxes.push([`f:${k}`, b]); }
+    shown.lines.forEach((l, i) => { const b = boxFor(inv, l.lines ?? []); if (b) boxes.push([`i:${i}`, b]); });
+  }
+  // opened on a value: start zoomed in on it
+  const [zoom, setZoom] = useState(() => { const b = boxes.find(([k]) => k === focusKey)?.[1]; return b ? (b[2] < 0.6 ? 2 : 1.5) : 1; });
+  const [key, setKey] = useState(focusKey);
+  const scroller = useRef<HTMLDivElement>(null);
+  const label = (k: string | null) => {
+    if (!k || !shown) return null;
+    if (k.startsWith("i:")) { const r = shown.items[Number(k.slice(2))]; return r ? `${r.desc} · ${money(r.amount, inv.currency)}` : null; }
+    const f = k.slice(2) as FieldKey;
+    const v = shown[f as keyof Shown];
+    return `${FIELD_NAME[f]}: ${typeof v === "number" ? money(v, inv.currency) : v ?? "–"}`;
+  };
+  // centre the selected value
+  useEffect(() => {
+    const el = scroller.current, b = boxes.find(([k]) => k === key)?.[1];
+    if (!el || !b) return;
+    const img = el.querySelector("img");
+    if (!img) return;
+    const t = setTimeout(() => {
+      const W = img.clientWidth, H = img.clientHeight;
+      el.scrollTo({ left: (b[0] + b[2] / 2) * W - el.clientWidth / 2, top: (b[1] + b[3] / 2) * H - el.clientHeight / 2, behavior: "smooth" });
+    }, 60);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- boxes are derived from props
+  }, [key, zoom]);
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex flex-col bg-background">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+        <p className="min-w-0 flex-1 truncate text-sm text-foreground">{label(key) ?? "Invoice"}</p>
+        <div className="flex items-center rounded-lg border border-border text-sm">
+          <button onClick={() => setZoom((z) => Math.max(1, z - 0.5))} aria-label="Zoom out" className="px-3 py-1.5 text-muted-foreground hover:text-foreground">−</button>
+          <span className="w-12 text-center text-xs tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
+          <button onClick={() => setZoom((z) => Math.min(4, z + 0.5))} aria-label="Zoom in" className="px-3 py-1.5 text-muted-foreground hover:text-foreground">+</button>
+        </div>
+        <button onClick={onClose} aria-label="Close" className="grid size-9 place-items-center rounded-lg text-lg text-muted-foreground hover:bg-secondary hover:text-foreground">×</button>
+      </div>
+      <div ref={scroller} className="flex-1 overflow-auto bg-secondary/70 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="relative mx-auto bg-white shadow-sm" style={{ width: `${zoom * 100}%`, maxWidth: zoom === 1 ? "56rem" : undefined }}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- the user's own upload (data URL) */}
+          <img src={inv.image} alt={inv.name} className="block h-auto w-full dark:brightness-[0.92]" />
+          {boxes.map(([k, b]) => (
+            <button key={k} type="button" onClick={() => setKey(k)} aria-label={`Show ${k}`}
+              className={`absolute rounded-[3px] transition-colors ${key === k ? "bg-[#1100ff]/12 outline-2 outline-[#1100ff]" : "outline outline-1 outline-[#1100ff]/25"}`}
+              style={pos(b, 0.004)} />
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+const FIELD_NAME: Record<FieldKey, string> = { vendor: "Vendor", number: "Invoice no.", date: "Date", subtotal: "Subtotal", tax: "Tax", total: "Total" };
 
 function Status({ inv }: { inv: Invoice }) {
   if (inv.status === "failed")
@@ -326,7 +416,7 @@ function Editable({ inv, k, display, raw, numeric, enabled, flag }: { inv: Invoi
     <input autoFocus value={v} inputMode={numeric ? "decimal" : "text"} onChange={(e) => setV(numeric ? e.target.value.replace(/[^\d.-]/g, "") : e.target.value)}
       onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }} onBlur={save}
       style={numeric ? { width: `${Math.max(v.length, 4) + 2}ch` } : undefined}
-      className={`${numeric ? "text-right" : "w-full"} rounded border border-ring bg-background px-1.5 py-0.5 text-[inherit] text-foreground outline-none`} />
+      className={`${numeric ? "text-right" : "w-full"} rounded border border-ring bg-background px-1.5 py-0.5 text-base text-foreground outline-none sm:text-[length:inherit]`} />
   );
 }
 
@@ -344,7 +434,7 @@ function FlagCard({ f, inv, focused, refEl, onHover }: { f: Flag; inv: Invoice; 
           <>
             <input autoFocus value={v} inputMode={f.edit?.numeric ? "decimal" : "text"} onChange={(e) => setV(f.edit?.numeric ? e.target.value.replace(/[^\d.-]/g, "") : e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setEditing(false); }}
-              className="w-40 rounded-md border border-ring bg-background px-2 py-1 text-xs text-foreground outline-none" />
+              className="w-40 rounded-md border border-ring bg-background px-2 py-1 text-base text-foreground outline-none sm:text-xs" />
             <button onClick={save} className="rounded-md bg-foreground px-2.5 py-1 text-xs text-background">Save</button>
           </>
         ) : f.options.map((o) => (
