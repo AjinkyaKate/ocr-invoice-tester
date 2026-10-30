@@ -7,7 +7,8 @@ import { availableModels } from "@/lib/understand-models";
 import { rows } from "@/lib/ocr";
 import type { OcrLine } from "@/lib/invoices/types";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
+const PER_MODEL_MS = 45_000; // a model that stalls longer than this hands over to the next one
 
 const PROMPT = `You are reading a purchase document: a supplier invoice, tax invoice, bill or retail receipt, from any country.
 The image is attached. Below it is the OCR text, grouped into visual rows; every piece has an id in square brackets.
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
             output: Output.json(), // the provider's JSON mode, so the reply always parses
             maxRetries: 0, // a rate-limited model hands over to the next one right away
             messages: [{ role: "user", content: m.vision ? [{ type: "file", mediaType: mt[1], data: mt[2] }, { type: "text", text: PROMPT + text }] : PROMPT + text }],
-            abortSignal: req.signal,
+            abortSignal: AbortSignal.any([req.signal, AbortSignal.timeout(PER_MODEL_MS)]),
             onError: ({ error }) => { failure = error; },
           });
           let last = 0;
@@ -88,7 +89,8 @@ export async function POST(req: Request) {
           return;
         } catch (err) {
           if (req.signal.aborted) { controller.close(); return; }
-          tried.push(`${m.label}: ${describeError(failure ?? err)}`);
+          const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+          tried.push(`${m.label}: ${timedOut ? `no answer within ${PER_MODEL_MS / 1000}s` : describeError(failure ?? err)}`);
           console.warn(`[understand] ${tried.at(-1)}`); // visible in the dev server log
           if (sent) send({ type: "reset" });
         }
