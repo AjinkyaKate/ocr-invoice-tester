@@ -1,0 +1,474 @@
+[
+ {
+  "id": "invoice-1",
+  "kind": "business invoice",
+  "source": "katanaml-org/invoices-donut-data-v1 (MIT)",
+  "image": "images/invoice-1.jpg",
+  "truth": {
+   "header": {
+    "invoice_no": "97159829",
+    "invoice_date": "09/18/2015",
+    "seller": "Bradley-Andrade 9879 Elizabeth Common Lake Jonathan, RI 12335",
+    "client": "Castro PLC Unit 9678 Box 9664 DPO AP 69387",
+    "seller_tax_id": "985-73-8194",
+    "client_tax_id": "994-72-1270",
+    "iban": "GB81LZWO32519172531418"
+   },
+   "items": [
+    {
+     "item_desc": "12\" Marble Lapis Inlay Chess Table Top With 2\" Pieces & 15\" Wooden Stand W537",
+     "item_qty": "2,00",
+     "item_net_price": "444,60",
+     "item_net_worth": "889,20",
+     "item_vat": "10%",
+     "item_gross_worth": "978,12"
+    }
+   ],
+   "summary": {
+    "total_net_worth": "$ 889,20",
+    "total_vat": "$ 88,92",
+    "total_gross_worth": "$ 978,12"
+   }
+  }
+ },
+ {
+  "id": "invoice-2",
+  "kind": "business invoice",
+  "source": "katanaml-org/invoices-donut-data-v1 (MIT)",
+  "image": "images/invoice-2.jpg",
+  "truth": {
+   "header": {
+    "invoice_no": "13194726",
+    "invoice_date": "05/29/2021",
+    "seller": "Hopkins and Sons 62283 Flores Tunnel North Luis, IA 69983",
+    "client": "Sims PLC USS Kramer FPO AA 81651",
+    "seller_tax_id": "952-73-7223",
+    "client_tax_id": "995-88-9495",
+    "iban": "GB31LZX520242755934691"
+   },
+   "items": [
+    {
+     "item_desc": "Beach Lunch Lounge Striped Shirt Dress Large Navy Blue White Long Sleeve Causal",
+     "item_qty": "1,00",
+     "item_net_price": "16,99",
+     "item_net_worth": "16,99",
+     "item_vat": "10%",
+     "item_gross_worth": "18,69"
+    },
+    {
+     "item_desc": "Jams World Hawaiian 0 Dress Rayon SZ.L",
+     "item_qty": "5,00",
+     "item_net_price": "65,00",
+     "item_net_worth": "325,00",
+     "item_vat": "10%",
+     "item_gross_worth": "357,50"
+    },
+    {
+     "item_desc": "LuLaRoe Nicole Dress Size Large 26",
+     "item_qty": "2,00",
+     "item_net_price": "1,99",
+     "item_net_worth": "3,98",
+     "item_vat": "10%",
+     "item_gross_worth": "4,38"
+    },
+    {
+     "item_desc": "Johnny Was Medium Linen Wrap Dress Dessert Rose Embroiderd Bohemian",
+     "item_qty": "2,00",
+     "item_net_price": "89,99",
+     "item_net_worth": "179,98",
+     "item_vat": "10%",
+     "item_gross_worth": "197,98"
+    },
+    {
+     "item_desc": "Eileen Fisher Women's Long Sleeve Fleece Lined Front Pockets Dress XS Gray",
+     "item_qty": "2,00",
+     "item_net_price": "15,99",
+     "item_net_worth": "31,98",
+     "item_vat": "10%",
+     "item_gross_worth": "35,18"
+    },
+    {
+     "item_desc": "Hanna Anderson Women's L Large Coral Short Sleeve Casual Fall Tee Shirt Dress",
+     "item_qty": "1,00",
+     "item_net_price": "24,00",
+     "item_net_worth": "24,00",
+     "item_vat": "10%",
+     "item_gross_worth": "26,40"
+    }
+   ],
+   "summary": {
+    "total_net_worth": "$581,93",
+    "total_vat": "$58,19",
+    "total_gross_worth": "$ 640,12"
+   }
+  }
+ },
+ {
+  "id": "invoice-3",
+  "kind": "business invoice",
+  "source": "katanaml-org/invoices-donut-data-v1 (MIT)",
+  "image": "images/invoice-3.jpg",
+  "truth": {
+   "header": {
+    "invoice_no": "62517865",
+    "invoice_date": "06/02/2015",
+    "seller": "Trujillo-Hunt 430 Mark Ferry Suite 495 Maxside, DC 65686",
+    "client": "Lee and Sons 8552 Karen Islands East Roger, ID 40416",
+    "seller_tax_id": "992-71-8540",
+    "client_tax_id": "929-86-0601",
+    "iban": "GB73HCPH34959888432899"
+   },
+   "items": [
+    {
+     "item_desc": "Care & Repair of Furniture",
+     "item_qty": "2,00",
+     "item_net_price": "4,25",
+     "item_net_worth": "8,50",
+     "item_vat": "10%",
+     "item_gross_worth": "9,35"
+    }
+   ],
+   "summary": {
+    "total_net_worth": "$ 8,50",
+    "total_vat": "$0,85",
+    "total_gross_worth": "$9,35"
+   }
+  }
+ },
+ {
+  "id": "invoice-4",
+  "kind": "business invoice",
+  "source": "katanaml-org/invoices-donut-data-v1 (MIT)",
+  "image": "images/invoice-4.jpg",
+  "truth": {
+   "header": {
+    "invoice_no": "56014042",
+    "invoice_date": "10/01/2014",
+    "seller": "Nichols-Barajas 3882 Stacy Ville Apt. 488 Lake Kristinatown, ND 48049",
+    "client": "Mckay PLC 5542 Danielle Drive Suite 381 West Mason, ME 76671",
+    "seller_tax_id": "953-87-6813",
+    "client_tax_id": "965-90-8517",
+    "iban": "GB08KXQT197119711661357354"
+   },
+   "items": [
+    {
+     "item_desc": "Jordan Hydro 2 (TD)-Child Size",
+     "item_qty": "2,00",
+     "item_net_price": "5,75",
+     "item_net_worth": "11,50",
+     "item_vat": "10%",
+     "item_gross_worth": "12,65"
+    },
+    {
+     "item_desc": "Sketchers Energy Lights Boys Black Canvas Size 4 With Charging Cable",
+     "item_qty": "4,00",
+     "item_net_price": "12,00",
+     "item_net_worth": "48,00",
+     "item_vat": "10%",
+     "item_gross_worth": "52,80"
+    }
+   ],
+   "summary": {
+    "total_net_worth": "$59,50",
+    "total_vat": "$5,95",
+    "total_gross_worth": "$65,45"
+   }
+  }
+ },
+ {
+  "id": "invoice-5",
+  "kind": "business invoice",
+  "source": "katanaml-org/invoices-donut-data-v1 (MIT)",
+  "image": "images/invoice-5.jpg",
+  "truth": {
+   "header": {
+    "invoice_no": "16662010",
+    "invoice_date": "08/28/2016",
+    "seller": "Smith-Cook 174 Justin Causeway West Michaelmouth, ME 69894",
+    "client": "Snyder-Johnson 05173 Heather Mill Jenniferfort, WV79662",
+    "seller_tax_id": "959-84-2124",
+    "client_tax_id": "938-85-4960",
+    "iban": "GB20BAKH22085364527355"
+   },
+   "items": [
+    {
+     "item_desc": "Nintendo Gameboy Pocket Console Green with Box MGB-001 Japan Tested Working 59",
+     "item_qty": "1,00",
+     "item_net_price": "65,00",
+     "item_net_worth": "65,00",
+     "item_vat": "10%",
+     "item_gross_worth": "71,50"
+    },
+    {
+     "item_desc": "New Sony Playstation 4 Slim 1TB 3 Game Bundle Console. Sealed!!!",
+     "item_qty": "3,00",
+     "item_net_price": "399,99",
+     "item_net_worth": "1199,97",
+     "item_vat": "10%",
+     "item_gross_worth": "1319,97"
+    },
+    {
+     "item_desc": "Atari Flashback 4 Classic Game Console 75 built in games Space Invaders Asteroid",
+     "item_qty": "4,00",
+     "item_net_price": "8,50",
+     "item_net_worth": "34,00",
+     "item_vat": "10%",
+     "item_gross_worth": "37,40"
+    },
+    {
+     "item_desc": "Sony PlayStation 1 PS1 Console model scph-7501",
+     "item_qty": "4,00",
+     "item_net_price": "14,99",
+     "item_net_worth": "59,96",
+     "item_vat": "10%",
+     "item_gross_worth": "65,96"
+    },
+    {
+     "item_desc": "Nintendo Wii Console 2 Remotes w/ Covers, Nunchucks, Sensor Sega Game Bundle",
+     "item_qty": "1,00",
+     "item_net_price": "85,00",
+     "item_net_worth": "85,00",
+     "item_vat": "10%",
+     "item_gross_worth": "93,50"
+    },
+    {
+     "item_desc": "Sony PlayStation 3 PS3 Super Slim Black Console 20GB *Tested* Console & Cables",
+     "item_qty": "4,00",
+     "item_net_price": "99,95",
+     "item_net_worth": "399,80",
+     "item_vat": "10%",
+     "item_gross_worth": "439,78"
+    },
+    {
+     "item_desc": "Nintendo Gameboy Pocket Console Green with Box MGB-001 Japan Tested Working",
+     "item_qty": "3,00",
+     "item_net_price": "70,00",
+     "item_net_worth": "210,00",
+     "item_vat": "10%",
+     "item_gross_worth": "231,00"
+    }
+   ],
+   "summary": {
+    "total_net_worth": "$2053,73",
+    "total_vat": "$205,37",
+    "total_gross_worth": "$2259,10"
+   }
+  }
+ },
+ {
+  "id": "invoice-6",
+  "kind": "business invoice",
+  "source": "katanaml-org/invoices-donut-data-v1 (MIT)",
+  "image": "images/invoice-6.jpg",
+  "truth": {
+   "header": {
+    "invoice_no": "27543706",
+    "invoice_date": "07/20/2020",
+    "seller": "Kaiser, Hays and Cook 460 Richard Forge Lake Maria, CA 86826",
+    "client": "Holland PLC 10833 Hill Courts Suite 606 Collinsland, CA 60385",
+    "seller_tax_id": "980-78-9083",
+    "client_tax_id": "998-85-0115",
+    "iban": "GB82GOCR29918894344551"
+   },
+   "items": [
+    {
+     "item_desc": "Marble Beautiful White Coffee Table Top Malachite Inlay Art Home Decor H5372",
+     "item_qty": "5,00",
+     "item_net_price": "271,01",
+     "item_net_worth": "1355,05",
+     "item_vat": "10%",
+     "item_gross_worth": "1 490,55"
+    },
+    {
+     "item_desc": "15\"x15\" White Decorative Coffee Table Top Lapis Lazuli Marquetery Patio D\u00e9cor",
+     "item_qty": "4,00",
+     "item_net_price": "645,77",
+     "item_net_worth": "2583,08",
+     "item_vat": "10%",
+     "item_gross_worth": "2 841,39"
+    },
+    {
+     "item_desc": "16 Inches Marble Coffee Table Top Inlay with Multi Stone at Border Game Table",
+     "item_qty": "1,00",
+     "item_net_price": "280,50",
+     "item_net_worth": "280,50",
+     "item_vat": "10%",
+     "item_gross_worth": "308,55"
+    },
+    {
+     "item_desc": "18\" Black Marble Coffee Table Top Mother of Pearl Inlay Furniture Decors H1883B",
+     "item_qty": "3,00",
+     "item_net_price": "377,65",
+     "item_net_worth": "1132,95",
+     "item_vat": "10%",
+     "item_gross_worth": "1246,24"
+    },
+    {
+     "item_desc": "7'x4' Pietra Dura Marble Dining Hallway Table Top Inlay Design Patio Decor E977A",
+     "item_qty": "2,00",
+     "item_net_price": "19 506,53",
+     "item_net_worth": "39 013,06",
+     "item_vat": "10%",
+     "item_gross_worth": "42 914,37"
+    }
+   ],
+   "summary": {
+    "total_net_worth": "$ 44 364,64",
+    "total_vat": "$4436,46",
+    "total_gross_worth": "48 801,10"
+   }
+  }
+ },
+ {
+  "id": "receipt-1",
+  "kind": "retail receipt",
+  "source": "naver-clova-ix/cord-v2 (CC BY 4.0)",
+  "image": "images/receipt-1.jpg",
+  "truth": {
+   "menu": {
+    "nm": "-TICKET CP",
+    "num": "901016",
+    "cnt": "2",
+    "price": "60.000",
+    "itemsubtotal": "60.000"
+   },
+   "sub_total": {
+    "subtotal_price": "60.000",
+    "discount_price": "-60.000",
+    "tax_price": "5.455"
+   },
+   "total": {
+    "total_price": "60.000",
+    "creditcardprice": "60.000",
+    "menuqty_cnt": "2.00"
+   }
+  }
+ },
+ {
+  "id": "receipt-2",
+  "kind": "retail receipt",
+  "source": "naver-clova-ix/cord-v2 (CC BY 4.0)",
+  "image": "images/receipt-2.jpg",
+  "truth": {
+   "menu": [
+    {
+     "nm": "J.STB PROMO",
+     "price": "17500"
+    },
+    {
+     "nm": "Y.B.BAT",
+     "price": "46000"
+    },
+    {
+     "nm": "Y.BASO PROM",
+     "price": "27500"
+    }
+   ],
+   "total": {
+    "total_price": "91000",
+    "cashprice": "91000"
+   }
+  }
+ },
+ {
+  "id": "receipt-3",
+  "kind": "retail receipt",
+  "source": "naver-clova-ix/cord-v2 (CC BY 4.0)",
+  "image": "images/receipt-3.jpg",
+  "truth": {
+   "menu": {
+    "nm": "JASMINE MT ( L )",
+    "cnt": "1",
+    "price": "24,000",
+    "sub": {
+     "nm": "COCONUT JELLY ( L )",
+     "price": "4,000"
+    }
+   },
+   "sub_total": {
+    "subtotal_price": "28,000"
+   },
+   "total": {
+    "total_price": "28,000",
+    "cashprice": "100,000",
+    "changeprice": "72,000",
+    "menuqty_cnt": "1"
+   }
+  }
+ },
+ {
+  "id": "receipt-4",
+  "kind": "retail receipt",
+  "source": "naver-clova-ix/cord-v2 (CC BY 4.0)",
+  "image": "images/receipt-4.jpg",
+  "truth": {
+   "menu": {
+    "nm": "DONAT GULA",
+    "unitprice": "@11000",
+    "cnt": "1X",
+    "price": "11,000"
+   },
+   "sub_total": {
+    "subtotal_price": "11,000"
+   },
+   "total": {
+    "total_price": "11,000",
+    "cashprice": "11,000",
+    "menuqty_cnt": "1.00xITEMs"
+   }
+  }
+ },
+ {
+  "id": "scan-1",
+  "kind": "scanned shop receipt",
+  "source": "Voxel51/scanned_receipts, SROIE (CC BY 4.0)",
+  "image": "images/scan-1.jpg",
+  "truth": {
+   "vendor": "BOOK TA.K (TAMAN DAYA) SDN BHD",
+   "document_no": "TD01167104",
+   "date": "25/12/2018",
+   "items": [
+    {
+     "desc": "KF MODELLING CLAY KIDDY FISH",
+     "qty": "1",
+     "price": "9.000",
+     "amount": "9.00"
+    }
+   ],
+   "total": "9.00",
+   "cash": "10.00",
+   "change": "1.00"
+  },
+  "truth_note": "ground truth typed by hand from the image"
+ },
+ {
+  "id": "scan-2",
+  "kind": "scanned shop receipt",
+  "source": "Voxel51/scanned_receipts, SROIE (CC BY 4.0)",
+  "image": "images/scan-2.jpg",
+  "truth": {
+   "vendor": "INDAH GIFT & HOME DECO",
+   "date": "19/10/2018",
+   "items": [
+    {
+     "desc": "ST-PRIVILEGE CARD/GD INDAH",
+     "qty": "1",
+     "price": "10.00",
+     "amount": "10.00"
+    },
+    {
+     "desc": "GF-TABLE LAMP/STITCH <i>",
+     "qty": "1",
+     "price": "55.90",
+     "amount": "55.90"
+    }
+   ],
+   "discount": "-5.59",
+   "total_amt": "60.31",
+   "total": "60.30",
+   "cash": "70.30",
+   "change": "10.00"
+  },
+  "truth_note": "ground truth typed by hand from the image"
+ }
+]

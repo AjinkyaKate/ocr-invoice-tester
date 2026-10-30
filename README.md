@@ -1,3 +1,12 @@
+# OCR Invoice Tester
+
+This repo has two parts:
+
+- **`web/`: Invoices**, a web app. Upload an invoice or receipt image; every value is read, outlined on the original and checked, and you correct only what needs it before approving. PaddleOCR (local) or OCR.space (hosted) reads the text with positions, then a free LLM (Gemini 2.5 Flash, Nemotron, GPT-OSS on Groq, in turn) extracts vendor, number, date, items and totals. 96% field accuracy on 12 real invoices and receipts. See [`web/README.md`](web/README.md).
+- **The Python POC below**: compares OCR providers on raw text extraction.
+
+---
+
 # OCR Invoice Text Extraction Evaluation POC
 
 This proof of concept compares OCR providers on one narrow task: raw text extraction from invoice images or PDFs.

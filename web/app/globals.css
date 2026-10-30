@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+/* shadcn / Nexvyn UI token names, filled with the portfolio site's palette
+   (portfolio-minimal/public/styles.css) so the app matches it in light and dark. */
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  /* Nexvyn components use --color-muted as a muted TEXT colour, so it maps to muted-foreground.
+     Use bg-secondary (not bg-muted) for muted backgrounds in app code. */
+  --color-muted: var(--muted-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  /* extra names some Nexvyn components read directly */
+  --color-surface: var(--muted);
+  --color-surface-2: var(--surface-2);
+  --color-bg: var(--background);
+  --color-fg: var(--foreground);
+  --color-subtle: var(--faint);
+  --color-faint: var(--faint);
+  --color-border-strong: var(--ring);
+  --color-error: var(--destructive);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --motion-dur-instant: 50ms;
+  --motion-dur-fast: 120ms;
+  --motion-dur-base: 200ms;
+  --motion-dur-slow: 320ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+:root {
+  color-scheme: light;
+  --radius: 0.5rem;
+  --background: #ffffff;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: #09090b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --faint: #a1a1aa;
+  --surface-2: #e9e9eb;
+  --accent: #1100ff;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #a1a1aa;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #101010;
+  --foreground: #e4e4e7;
+  --card: #151515;
+  --card-foreground: #e4e4e7;
+  --popover: #18181b;
+  --popover-foreground: #e4e4e7;
+  --primary: #fafafa;
+  --primary-foreground: #09090b;
+  --secondary: #1c1c1c;
+  --secondary-foreground: #e4e4e7;
+  --muted: #1c1c1c;
+  --muted-foreground: #a1a1aa;
+  --faint: #71717a;
+  --surface-2: #242424;
+  --accent: #6b8cff;
+  --accent-foreground: #09090b;
+  --destructive: #f87171;
+  --destructive-foreground: #09090b;
+  --border: #27272a;
+  --input: #323232;
+  --ring: #52525b;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+.caret::after { content: "▍"; margin-left: 1px; color: var(--faint); animation: blink 1s step-end infinite; }
+
+/* from Nexvyn UI's globals (used by badge and other components) */
+.squircle { border-radius: 9999px; corner-shape: squircle; }
+.squircle-corners { corner-shape: squircle; }
+
+/* Invoice reading animations */
+@keyframes scan-sweep { 0% { top: -25%; } 100% { top: 100%; } }
+.scan-beam {
+  position: absolute; left: 0; right: 0; height: 25%; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--accent) 14%, transparent) 70%, color-mix(in oklab, var(--accent) 55%, transparent) 99%, transparent);
+  animation: scan-sweep 1.9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes text-wave { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.text-wave { animation: text-wave 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .scan-beam, .text-wave { animation: none; } }
