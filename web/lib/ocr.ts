@@ -21,9 +21,8 @@ async function ocrSpace(image: string, key: string): Promise<OcrResult> {
   const d = await (await fetch("https://api.ocr.space/parse/image", { method: "POST", body })).json();
   if (d.IsErroredOnProcessing) throw new Error(String(d.ErrorMessage ?? "OCR.space failed"));
   const raw: { LineText: string; Words: { Left: number; Top: number; Width: number; Height: number }[] }[] = d.ParsedResults[0].TextOverlay.Lines;
-  // OCR.space reports pixels; find the image size from the furthest word so boxes become fractions
-  const words = raw.flatMap((l) => l.Words);
-  const W = Math.max(...words.map((w) => w.Left + w.Width), 1), H = Math.max(...words.map((w) => w.Top + w.Height), 1);
+  // OCR.space reports pixels of the uploaded image; divide by its real size so boxes become fractions
+  const { width: W, height: H } = imageSize(image);
   const lines = raw.map((l) => {
     const x0 = Math.min(...l.Words.map((w) => w.Left)), y0 = Math.min(...l.Words.map((w) => w.Top));
     const x1 = Math.max(...l.Words.map((w) => w.Left + w.Width)), y1 = Math.max(...l.Words.map((w) => w.Top + w.Height));
@@ -58,4 +57,17 @@ export function rows(lines: OcrLine[]): number[][] {
     } else out.push({ ids: [i], mid, h });
   }
   return out.map((r) => r.ids.sort((a, b) => lines[a].box[0] - lines[b].box[0]));
+}
+
+/** Width and height of a base64 JPEG or PNG data URL, read from the file header. */
+export function imageSize(dataUrl: string): { width: number; height: number } {
+  const b = Buffer.from(dataUrl.slice(dataUrl.indexOf(",") + 1), "base64");
+  if (b[0] === 0x89 && b[1] === 0x50) return { width: b.readUInt32BE(16), height: b.readUInt32BE(20) }; // PNG IHDR
+  for (let i = 2; i < b.length - 9; ) { // JPEG: walk the segments to the frame header (SOF0..SOF15, not DHT/JPG/DAC)
+    if (b[i] !== 0xff) { i++; continue; }
+    const m = b[i + 1];
+    if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { width: b.readUInt16BE(i + 7), height: b.readUInt16BE(i + 5) };
+    i += 2 + b.readUInt16BE(i + 2);
+  }
+  throw new Error("Could not read the image size");
 }
