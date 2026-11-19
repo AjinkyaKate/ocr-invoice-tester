@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   const mt = /^data:(image\/[\w+.-]+);base64,(.+)$/.exec(image ?? "");
   if (!mt || !Array.isArray(lines)) return Response.json({ error: "Send the image and its OCR lines" }, { status: 400 });
 
-  const text = rows(lines).map((r) => r.map((i) => `[${i}] ${lines[i].text}`).join("   ")).join("\n");
+  const text = !lines.length ? "(none: the text step failed. Read every value from the image and use [] for ids.)" : rows(lines).map((r) => r.map((i) => `[${i}] ${lines[i].text}`).join("   ")).join("\n");
   // Stream NDJSON: {"type":"attempt"} when a model starts, {"type":"partial","data":…} while it writes,
   // {"type":"failed"} if it gives up, then {"type":"done",…}.
   // Free models are tried in turn; if one fails (even mid-way) the client is told to reset and the next one starts.
@@ -64,7 +64,10 @@ export async function POST(req: Request) {
     async start(controller) {
       const send = (o: object) => controller.enqueue(encoder.encode(JSON.stringify(o) + "\n"));
       const tried: string[] = [];
-      for (const m of models) {
+      // without OCR text only a model that can see the image can read it
+      const usable = lines.length ? models : models.filter((m) => m.vision);
+      if (!usable.length) { send({ type: "error", message: "The text step failed and no image-reading model is set up." }); controller.close(); return; }
+      for (const m of usable) {
         const started = Date.now();
         let failure: unknown = null;
         let sent = false;

@@ -88,8 +88,14 @@ async function run(id: string) {
     if (!inv) return;
     if (!inv.ocr) {
       patch(id, (i) => ({ ...i, status: "reading", error: undefined }));
-      const r = await post<{ lines: OcrLine[]; ms: number; engine: string }>("/api/read", { image: inv.image });
-      patch(id, (i) => ({ ...i, ocr: { lines: r.lines, ms: r.ms, engine: r.engine } }));
+      const t0 = Date.now();
+      try {
+        const r = await post<{ lines: OcrLine[]; ms: number; engine: string }>("/api/read", { image: inv.image });
+        patch(id, (i) => ({ ...i, ocr: { lines: r.lines, ms: r.ms, engine: r.engine } }));
+      } catch (err) {
+        // no word positions: keep going, the vision model reads the image on its own (values just can't be outlined)
+        patch(id, (i) => ({ ...i, ocr: { lines: [], ms: Date.now() - t0, engine: "none", error: err instanceof Error ? err.message : String(err) } }));
+      }
       inv = get(id)!;
     }
     patch(id, (i) => ({ ...i, status: "understanding", error: undefined, partial: undefined, attempts: [], understandStartedAt: Date.now() }));
@@ -175,6 +181,7 @@ export const actions = {
     return id;
   },
   retry(id: string) {
+    patch(id, (i) => (i.ocr?.error ? { ...i, ocr: undefined } : i)); // a retry also tries the text step again
     void run(id);
   },
   decide(id: string, flag: string, option: string, label = "Answered a check") {

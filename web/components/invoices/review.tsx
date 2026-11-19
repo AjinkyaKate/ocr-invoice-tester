@@ -438,6 +438,8 @@ function Source({ inv, shown, lit, final }: { inv: Invoice; shown: Shown; lit: s
           <span className="text-foreground">{label}</span> read from <span className="rounded bg-[#1100ff]/8 px-1 font-mono text-[11px] text-foreground">{src.text.length > 90 ? src.text.slice(0, 90) + "…" : src.text}</span>
           <span className={pct < 85 ? " text-amber-700 dark:text-amber-400" : ""}> · {pct}% clear{pct < 85 ? ", worth a look" : ""}</span>
         </p>
+      ) : lit && inv.ocr?.error ? (
+        <p className="text-muted-foreground">Word positions weren&apos;t available for this invoice, so values can&apos;t be pointed at. <button onClick={() => actions.retry(inv.id)} className="text-foreground underline underline-offset-4">Read again</button></p>
       ) : lit ? (
         <p className="text-muted-foreground">{label ? `${label}: ` : ""}not printed on the document, so nothing to point at.</p>
       ) : (

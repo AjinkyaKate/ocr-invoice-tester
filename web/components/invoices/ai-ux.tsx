@@ -55,18 +55,19 @@ export function Steps({ inv, compact = false }: { inv: Invoice; compact?: boolea
     );
 
   const steps = [
-    { label: "Read the text", state: reading ? "run" : "done", note: inv.ocr ? `${inv.ocr.lines.length} pieces of text · ${secs(inv.ocr.ms)}` : "Finding every word and where it sits" },
+    { label: "Read the text", state: reading ? "run" : inv.ocr?.error ? "skip" : "done",
+      note: inv.ocr?.error ? `${inv.ocr.error}. The AI will read the image directly; values won't be outlined.` : inv.ocr ? `${inv.ocr.lines.length} pieces of text · ${secs(inv.ocr.ms)}` : "Finding every word and where it sits" },
     { label: "Understand the fields", state: reading ? "wait" : "run",
       note: understanding ? `${short(inv.understandModel)} · ${Math.floor(elapsed / 1000)} s${found ? ` · ${found} found so far` : ""}` : "Vendor, number, date, items and totals" },
     { label: "Check the maths", state: "wait", note: "Lines, subtotal, tax and total must agree" },
-  ] as const;
+  ] as { label: string; state: "run" | "done" | "skip" | "wait"; note: string }[];
 
   return (
     <div className="text-sm">
       <ol className="space-y-3">
         {steps.map((s) => (
           <li key={s.label} className="flex gap-3">
-            <span className="mt-0.5">{s.state === "done" ? <Tick /> : s.state === "run" ? <BarsTheme state="thinking" volume={0.5} size={14} /> : <Dot />}</span>
+            <span className="mt-0.5">{s.state === "done" ? <Tick /> : s.state === "skip" ? <Cross /> : s.state === "run" ? <BarsTheme state="thinking" volume={0.5} size={14} /> : <Dot />}</span>
             <div>
               <p className={s.state === "wait" ? "text-faint" : "text-foreground"}>{s.label}</p>
               <p className="text-xs tabular-nums text-muted-foreground">{s.note}</p>
@@ -102,12 +103,12 @@ export function Explain({ inv, a }: { inv: Invoice; a: Analysis }) {
             <ol className="mt-4 space-y-4 border-s border-border ps-4 text-xs">
               <li>
                 <p className="text-foreground">1 · Read the text</p>
-                <p className="text-muted-foreground">{inv.ocr ? `${inv.ocr.engine} found ${inv.ocr.lines.length} pieces of text and where each sits, in ${secs(inv.ocr.ms)}.` : "Not run."}</p>
+                <p className="text-muted-foreground">{inv.ocr?.error ? `Skipped: ${inv.ocr.error}. The model read the image on its own, so values are not outlined. Try again later for outlines.` : inv.ocr ? `${inv.ocr.engine} found ${inv.ocr.lines.length} pieces of text and where each sits, in ${secs(inv.ocr.ms)}.` : "Not run."}</p>
               </li>
               <li>
                 <p className="text-foreground">2 · Understand the fields</p>
                 <p className="text-muted-foreground">
-                  {short(inv.understandModel)} looked at the image and the text and picked out each field, pointing at the text it came from{inv.understandMs ? `, in ${secs(inv.understandMs)}` : ""}.
+                  {short(inv.understandModel)} {inv.ocr?.error ? "read each field from the image alone" : "looked at the image and the text and picked out each field, pointing at the text it came from"}{inv.understandMs ? `, in ${secs(inv.understandMs)}` : ""}.
                 </p>
                 {inv.attempts?.filter((x) => !x.ok).map((x) => (
                   <p key={x.model} className="mt-1 text-faint">Tried {short(x.model)} first: {x.reason}</p>

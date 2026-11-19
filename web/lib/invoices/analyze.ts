@@ -139,7 +139,7 @@ export function analyze(inv: Invoice): Analysis {
     { label: "Vendor, number and date found", ok: ["vendor", "number", "date"].every((k) => value(k as FieldKey) !== null) },
     ...(lines.some((r) => r.qty !== null && r.rate !== null) ? [{ label: "Each line matches qty × price", ok: !has(":math") }] : []),
     ...(lines.length ? [{ label: "Items add up to the total", ok: !has("totals") && !has("subtax") && !has("noamount") && total !== null }] : []),
-    { label: "Text read clearly", ok: !has("unsure") },
+    ...(inv.ocr?.lines.length ? [{ label: "Text read clearly", ok: !has("unsure") }] : []),
   ];
   return { flags, checks, unresolved: flags.filter((f) => !d[f.id]), lines, value, itemsTotal };
 }

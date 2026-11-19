@@ -30,7 +30,7 @@ export type Invoice = {
   receivedAt: string;
   status: Stage;
   image: string;
-  ocr?: { lines: OcrLine[]; ms: number; engine: string };
+  ocr?: { lines: OcrLine[]; ms: number; engine: string; error?: string }; // error: positions unavailable, the model read the image alone
   understandMs?: number;
   understandModel?: string; // which model read the fields
   currency?: string | null;

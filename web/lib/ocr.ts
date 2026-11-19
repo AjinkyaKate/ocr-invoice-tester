@@ -18,9 +18,17 @@ async function local(image: string): Promise<OcrResult> {
 async function ocrSpace(image: string, key: string): Promise<OcrResult> {
   const started = Date.now();
   const body = new URLSearchParams({ apikey: key, base64Image: image, OCREngine: "2", isOverlayRequired: "true", scale: "true" });
-  const d = await (await fetch("https://api.ocr.space/parse/image", { method: "POST", body })).json();
-  if (d.IsErroredOnProcessing) throw new Error(String(d.ErrorMessage ?? "OCR.space failed"));
-  const raw: { LineText: string; Words: { Left: number; Top: number; Width: number; Height: number }[] }[] = d.ParsedResults[0].TextOverlay.Lines;
+  const res = await fetch("https://api.ocr.space/parse/image", { method: "POST", body, signal: AbortSignal.timeout(30_000) });
+  const txt = await res.text();
+  let d: { IsErroredOnProcessing?: boolean; ErrorMessage?: string | string[]; ParsedResults?: { TextOverlay?: { Lines?: unknown } }[] } | string;
+  try { d = JSON.parse(txt); } catch { d = txt; }
+  // OCR.space answers limits and outages as a bare string or an ErrorMessage, sometimes with HTTP 200
+  const why = typeof d === "string" ? d : [d.ErrorMessage].flat().filter(Boolean).join(" ");
+  const raw = typeof d === "string" ? undefined : (d.ParsedResults?.[0]?.TextOverlay?.Lines as { LineText: string; Words: { Left: number; Top: number; Width: number; Height: number }[] }[] | undefined);
+  if (!res.ok || !Array.isArray(raw)) {
+    const limited = res.status === 403 || res.status === 429 || /maximum|limit|times within/i.test(why);
+    throw new Error(limited ? "OCR.space free limit reached" : `OCR.space failed${why ? `: ${why.slice(0, 120)}` : ` (HTTP ${res.status})`}`);
+  }
   // OCR.space reports pixels of the uploaded image; divide by its real size so boxes become fractions
   const { width: W, height: H } = imageSize(image);
   const lines = raw.map((l) => {
