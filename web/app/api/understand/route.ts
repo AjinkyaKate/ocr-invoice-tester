@@ -56,7 +56,8 @@ export async function POST(req: Request) {
   if (!mt || !Array.isArray(lines)) return Response.json({ error: "Send the image and its OCR lines" }, { status: 400 });
 
   const text = rows(lines).map((r) => r.map((i) => `[${i}] ${lines[i].text}`).join("   ")).join("\n");
-  // Stream NDJSON: {"type":"partial","data":…} while the model writes, then {"type":"done",…}.
+  // Stream NDJSON: {"type":"attempt"} when a model starts, {"type":"partial","data":…} while it writes,
+  // {"type":"failed"} if it gives up, then {"type":"done",…}.
   // Free models are tried in turn; if one fails (even mid-way) the client is told to reset and the next one starts.
   const encoder = new TextEncoder();
   const body = new ReadableStream({
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
         const started = Date.now();
         let failure: unknown = null;
         let sent = false;
+        send({ type: "attempt", model: m.label }); // the waiting screen names the model that is reading
         try {
           const result = streamText({
             model: m.model(),
@@ -91,7 +93,9 @@ export async function POST(req: Request) {
         } catch (err) {
           if (req.signal.aborted) { controller.close(); return; }
           const timedOut = err instanceof DOMException && err.name === "TimeoutError";
-          tried.push(`${m.label}: ${timedOut ? `no answer within ${PER_MODEL_MS / 1000}s` : describeError(failure ?? err)}`);
+          const reason = timedOut ? `no answer within ${PER_MODEL_MS / 1000}s` : describeError(failure ?? err);
+          tried.push(`${m.label}: ${reason}`);
+          send({ type: "failed", model: m.label, reason, ms: Date.now() - started }); // the waiting screen explains the switch
           console.warn(`[understand] ${tried.at(-1)}`); // visible in the dev server log
           if (sent) send({ type: "reset" });
         }

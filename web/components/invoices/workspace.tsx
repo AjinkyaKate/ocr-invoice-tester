@@ -9,6 +9,7 @@ import { BarsTheme } from "@/components/ui/bars-theme";
 import { Ago } from "./bits";
 import { go, idFromPath } from "./nav";
 import { ReviewView } from "./review";
+import { Toasts } from "./ai-ux";
 import { Shell } from "./shell";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -31,6 +32,7 @@ export function Workspace() {
           )}
         </AnimatePresence>
       </LayoutGroup>
+      <Toasts />
     </Shell>
   );
 }
@@ -112,6 +114,8 @@ function Home() {
         </ol>
       )}
 
+      {invoices.length > 0 && <Overview invoices={invoices} />}
+
       {invoices.length > 0 && (
         <section className="mt-12">
           <div className="mb-2 flex items-center justify-between text-sm">
@@ -191,5 +195,35 @@ function Row({ inv }: { inv: Invoice }) {
       {busy && <BarsTheme state="thinking" volume={0.5} size={14} className="sm:hidden" />}
       <span className="shrink-0 text-right text-sm tabular-nums text-foreground sm:w-24">{money(inv.edits.total !== undefined ? Number(inv.edits.total) : inv.total.value, inv.currency)}</span>
     </button>
+  );
+}
+
+/** Proactive next steps across the list, and what feedback says about reading quality. */
+function Overview({ invoices }: { invoices: Invoice[] }) {
+  const review = invoices.filter((i) => i.status === "review");
+  const ready = review.filter((i) => analyze(i).unresolved.length === 0);
+  const needs = review.length - ready.length;
+  const voted = invoices.filter((i) => i.feedback);
+  const up = voted.filter((i) => i.feedback!.vote === "up").length;
+  const corrected = invoices.filter((i) => i.status === "done").reduce((n, i) => n + Object.keys(i.edits).length, 0);
+  if (!review.length && !voted.length) return null;
+  return (
+    <section className="mt-8 flex flex-wrap items-center gap-3 rounded-xl bg-secondary/70 px-4 py-3 text-sm">
+      <div className="me-auto min-w-0">
+        <p className="text-foreground">
+          {needs ? `${needs} need${needs === 1 ? "s" : ""} you` : review.length ? "Nothing needs you" : "All caught up"}
+          {ready.length ? ` · ${ready.length} passed every check` : ""}
+        </p>
+        {voted.length > 0 && (
+          <p className="text-xs text-muted-foreground">Your feedback: {up} of {voted.length} readings right{corrected ? ` · ${corrected} value${corrected === 1 ? "" : "s"} corrected` : ""}</p>
+        )}
+      </div>
+      {needs > 0 && <button onClick={() => go(review.find((i) => analyze(i).unresolved.length)!.id)} className="rounded-lg px-3 py-1.5 text-foreground hover:bg-background">Review next</button>}
+      {ready.length > 0 && (
+        <button onClick={() => actions.approveMany(ready.map((i) => i.id))} className="rounded-lg bg-foreground px-3 py-1.5 text-background">
+          Approve {ready.length} ready
+        </button>
+      )}
+    </section>
   );
 }

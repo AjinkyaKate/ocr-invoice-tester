@@ -2,11 +2,14 @@
 // Invoices, kept in the browser (localStorage) so they survive reloads.
 // An upload runs in two steps: /api/read (OCR: text + positions), then /api/understand (fields).
 import { useSyncExternalStore } from "react";
-import type { Field, Invoice, Line, OcrLine } from "./types";
+import type { Feedback, Field, Invoice, Line, OcrLine } from "./types";
 
-type State = { invoices: Invoice[] };
+/** A short message after an action, with a way to take it back. */
+export type Toast = { key: number; text: string; undo?: string[] }; // ids whose last change Undo rolls back
+type State = { invoices: Invoice[]; toast?: Toast };
 const KEY = "invoices-v1";
 const KEEP = 30; // older finished invoices are dropped so images fit in browser storage
+const HISTORY = 50; // undo steps kept per invoice
 
 let state: State = { invoices: [] };
 const serverState = state;
@@ -18,7 +21,7 @@ function persist() {
     try {
       const open = state.invoices.filter((i) => i.status !== "done" && i.status !== "rejected");
       const closed = state.invoices.filter((i) => i.status === "done" || i.status === "rejected").slice(0, keep);
-      localStorage.setItem(KEY, JSON.stringify({ invoices: [...open, ...closed] }));
+      localStorage.setItem(KEY, JSON.stringify({ invoices: [...open, ...closed].map((i) => ({ ...i, history: i.history?.slice(-HISTORY) })) }));
       return;
     } catch {} // quota: try again keeping fewer finished invoices
   }
@@ -31,7 +34,7 @@ function set(next: State) {
   saveTimer = setTimeout(persist, 400);
   listeners.forEach((l) => l());
 }
-const patch = (id: string, f: (i: Invoice) => Invoice) => set({ invoices: state.invoices.map((i) => (i.id === id ? f(i) : i)) });
+const patch = (id: string, f: (i: Invoice) => Invoice) => set({ ...state, invoices: state.invoices.map((i) => (i.id === id ? f(i) : i)) });
 const get = (id: string) => state.invoices.find((i) => i.id === id);
 
 function load() {
@@ -62,7 +65,7 @@ const empty = <T,>(): Field<T> => ({ value: null, lines: [] });
 function normalize(i: Invoice): Invoice {
   const fields = ["vendor", "number", "date", "subtotal", "tax", "total"] as const;
   const broken = (i.status === "review" || i.status === "done") && fields.some((k) => !i[k]);
-  const fixed = { ...i, decisions: i.decisions ?? {}, edits: i.edits ?? {}, lines: Array.isArray(i.lines) ? i.lines : [] } as Invoice;
+  const fixed = { ...i, decisions: i.decisions ?? {}, edits: i.edits ?? {}, history: i.history ?? [], lines: Array.isArray(i.lines) ? i.lines : [] } as Invoice;
   for (const k of fields) if (!fixed[k]) (fixed as Record<string, unknown>)[k] = empty();
   return broken ? { ...fixed, status: "failed", error: "This invoice wasn't read completely. Try again." } : fixed;
 }
@@ -89,7 +92,7 @@ async function run(id: string) {
       patch(id, (i) => ({ ...i, ocr: { lines: r.lines, ms: r.ms, engine: r.engine } }));
       inv = get(id)!;
     }
-    patch(id, (i) => ({ ...i, status: "understanding", error: undefined, partial: undefined }));
+    patch(id, (i) => ({ ...i, status: "understanding", error: undefined, partial: undefined, attempts: [], understandStartedAt: Date.now() }));
     // the model's answer streams in as NDJSON: partial fields, then the final result
     const res = await fetch("/api/understand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: inv.image, lines: inv.ocr!.lines }) });
     if (!res.ok || !res.body) throw new Error((await res.json().catch(() => ({}))).error ?? `Request failed (${res.status})`);
@@ -107,13 +110,17 @@ async function run(id: string) {
         const e = JSON.parse(line);
         if (e.type === "partial") patch(id, (i) => ({ ...i, partial: { ...e.data, items: e.data.items } }));
         else if (e.type === "reset") patch(id, (i) => ({ ...i, partial: undefined }));
+        else if (e.type === "attempt") patch(id, (i) => ({ ...i, understandModel: e.model }));
+        else if (e.type === "failed") patch(id, (i) => ({ ...i, attempts: [...(i.attempts ?? []), { model: e.model, ok: false, ms: e.ms, reason: e.reason }] }));
         else if (e.type === "error") throw new Error(e.message);
         else if (e.type === "done") done = { ...e.data, ms: e.ms, model: e.model };
       }
     }
     if (!done) throw new Error("The reading stopped early. Try again.");
     const u = done;
-    patch(id, (i) => ({ ...i, status: "review", partial: undefined, understandMs: u.ms, understandModel: u.model, currency: u.currency, vendor: u.vendor, number: u.number, date: u.date, subtotal: u.subtotal, tax: u.tax, total: u.total, lines: u.items }));
+    patch(id, (i) => ({ ...i, status: "review", partial: undefined, understandMs: u.ms, understandModel: u.model, currency: u.currency, vendor: u.vendor, number: u.number, date: u.date, subtotal: u.subtotal, tax: u.tax, total: u.total, lines: u.items,
+      attempts: [...(i.attempts ?? []), { model: u.model, ok: true, ms: u.ms }] }));
+    patch(id, (i) => ({ ...i, suggest: suggestFor(i) }));
   } catch (err) {
     patch(id, (i) => ({ ...i, status: "failed", error: err instanceof Error ? err.message : String(err) }));
   } finally {
@@ -121,38 +128,122 @@ async function run(id: string) {
   }
 }
 
+// ---- what the app learns from corrections, kept in this browser ----------------------------------
+const ALIASES = "vendor-aliases-v1"; // vendor name as read -> the name the person corrected it to
+const norm = (v: string | null | undefined) => (v ?? "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+function aliases(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(ALIASES) ?? "{}"); } catch { return {}; }
+}
+function remember(read: string | null, corrected: string) {
+  if (!read || norm(read) === norm(corrected)) return;
+  try { localStorage.setItem(ALIASES, JSON.stringify({ ...aliases(), [norm(read)]: corrected })); } catch {}
+}
+
+/** Learn only from approved invoices: a vendor name the person corrected is suggested next time. */
+const learn = (inv: Invoice) => { if (inv.edits.vendor) remember(inv.vendor.value, inv.edits.vendor); };
+
+/** Suggestions worked out once an invoice is read: a vendor name corrected before, and a possible duplicate. */
+function suggestFor(inv: Invoice): Invoice["suggest"] {
+  const vendor = aliases()[norm(inv.vendor.value)];
+  const dup = inv.vendor.value && inv.number.value
+    ? state.invoices.find((o) => o.id !== inv.id && o.status !== "rejected" && o.status !== "failed"
+        && norm(o.edits.number ?? o.number.value) === norm(inv.number.value)
+        && [norm(o.edits.vendor ?? o.vendor.value), norm(o.vendor.value)].some((v) => v === norm(inv.vendor.value) || v === norm(vendor)))
+    : undefined;
+  return vendor || dup ? { vendor, duplicateOf: dup?.id } : undefined;
+}
+
+// ---- every change a person makes goes through here, so it can be undone ---------------------------
+function change(id: string, label: string, f: (i: Invoice) => Invoice) {
+  patch(id, (i) => {
+    const snap = { label, at: new Date().toISOString(), status: i.status, edits: i.edits, decisions: i.decisions };
+    return { ...f(i), history: [...(i.history ?? []), snap].slice(-HISTORY) };
+  });
+}
+let toastKey = 0;
+const toast = (text: string, undo?: string[]) => set({ ...state, toast: { key: ++toastKey, text, undo } });
+const nameOf = (i?: Invoice) => i?.edits.vendor ?? i?.vendor.value ?? "Invoice";
+
 export const actions = {
   /** Add an image and start reading it. Returns its id. */
   async add(file: Blob, name: string): Promise<string> {
     const id = `inv-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
     const image = await shrink(file);
-    const inv: Invoice = { id, name, receivedAt: new Date().toISOString(), status: "reading", image, vendor: empty(), number: empty(), date: empty(), subtotal: empty(), tax: empty(), total: empty(), lines: [], decisions: {}, edits: {} };
-    set({ invoices: [inv, ...state.invoices] });
+    const inv: Invoice = { id, name, receivedAt: new Date().toISOString(), status: "reading", image, vendor: empty(), number: empty(), date: empty(), subtotal: empty(), tax: empty(), total: empty(), lines: [], decisions: {}, edits: {}, history: [] };
+    set({ ...state, invoices: [inv, ...state.invoices] });
     void run(id);
     return id;
   },
   retry(id: string) {
     void run(id);
   },
-  decide(id: string, flag: string, option: string) {
-    patch(id, (i) => ({ ...i, decisions: { ...i.decisions, [flag]: option } }));
+  decide(id: string, flag: string, option: string, label = "Answered a check") {
+    change(id, label, (i) => ({ ...i, decisions: { ...i.decisions, [flag]: option } }));
   },
   edit(id: string, key: string, value: string, flag?: string) {
-    patch(id, (i) => ({ ...i, edits: { ...i.edits, [key]: value }, decisions: flag ? { ...i.decisions, [flag]: "edit" } : i.decisions }));
+    change(id, `Changed ${label(key)}`, (i) => ({ ...i, edits: { ...i.edits, [key]: value }, decisions: flag ? { ...i.decisions, [flag]: "edit" } : i.decisions }));
+  },
+  /** Go back to the value the AI read for one field. */
+  revert(id: string, key: string) {
+    change(id, `Restored ${label(key)}`, (i) => {
+      const edits = { ...i.edits };
+      delete edits[key];
+      return { ...i, edits };
+    });
+  },
+  /** Roll back the last change (answer, edit, approve or reject). */
+  undo(id: string) {
+    const inv = get(id);
+    const last = inv?.history?.at(-1);
+    if (!inv || !last) return;
+    patch(id, (i) => ({ ...i, status: last.status, edits: last.edits, decisions: last.decisions, history: i.history!.slice(0, -1),
+      resolvedAt: last.status === "done" || last.status === "rejected" ? i.resolvedAt : undefined }));
+    toast(`Undid: ${last.label.toLowerCase()}`);
   },
   approve(id: string) {
-    patch(id, (i) => (i.status === "review" ? { ...i, status: "done", resolvedAt: new Date().toISOString() } : i));
+    if (get(id)?.status !== "review") return;
+    learn(get(id)!);
+    change(id, "Approved", (i) => ({ ...i, status: "done", resolvedAt: new Date().toISOString() }));
+    toast(`Approved ${nameOf(get(id))}`, [id]);
+  },
+  /** Approve several invoices that passed every check, in one step (with one Undo). */
+  approveMany(ids: string[]) {
+    for (const id of ids) { if (get(id)) learn(get(id)!); }
+    for (const id of ids) change(id, "Approved", (i) => (i.status === "review" ? { ...i, status: "done", resolvedAt: new Date().toISOString() } : i));
+    toast(`Approved ${ids.length} invoice${ids.length === 1 ? "" : "s"}`, ids);
   },
   reject(id: string) {
-    patch(id, (i) => ({ ...i, status: "rejected", resolvedAt: new Date().toISOString() }));
+    change(id, "Rejected", (i) => ({ ...i, status: "rejected", resolvedAt: new Date().toISOString() }));
+    toast(`Rejected ${nameOf(get(id))}`, [id]);
+  },
+  /** Take an approved or rejected invoice back to review. */
+  reopen(id: string) {
+    change(id, "Reopened", (i) => ({ ...i, status: "review", resolvedAt: undefined }));
+  },
+  undoToast() {
+    const ids = state.toast?.undo ?? [];
+    set({ ...state, toast: undefined });
+    for (const id of ids) actions.undo(id);
+  },
+  dismissToast() {
+    set({ ...state, toast: undefined });
+  },
+  feedback(id: string, fb: Omit<Feedback, "at"> | null) {
+    patch(id, (i) => ({ ...i, feedback: fb ? { ...fb, at: new Date().toISOString() } : undefined }));
   },
   remove(id: string) {
-    set({ invoices: state.invoices.filter((i) => i.id !== id) });
+    set({ ...state, invoices: state.invoices.filter((i) => i.id !== id) });
   },
   clear() {
     set({ invoices: [] });
   },
 };
+
+/** "line:3:amount" -> "line 4 amount", "total" -> "total". */
+function label(key: string) {
+  const m = /^line:(\d+):(\w+)$/.exec(key);
+  return m ? `line ${Number(m[1]) + 1} ${m[2] === "rate" ? "price" : m[2] === "desc" ? "item" : m[2]}` : key === "number" ? "invoice no." : key;
+}
 
 /** Downscale big photos and return a JPEG data URL; kept under ~1 MB, the hosted OCR's upload limit. */
 async function shrink(file: Blob): Promise<string> {

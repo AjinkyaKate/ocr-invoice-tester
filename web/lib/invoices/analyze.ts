@@ -14,6 +14,8 @@ export type Flag = {
   detail: string;
   options: { id: string; label: string }[]; // option "edit" opens an input for `edit`
   edit?: { key: string; numeric: boolean; current: string };
+  open?: string; // id of another invoice this question refers to (a possible duplicate)
+  kind?: "suggestion"; // the app proposing something, not a problem found
 };
 
 export type LineResult = {
@@ -56,6 +58,13 @@ export function boxFor(inv: Invoice, ids: number[]): Box | null {
   return [x0, y0, x1 - x0, y1 - y0];
 }
 
+/** Where a value was read from: the printed text and how clearly OCR could read it (0 to 1). */
+export function sourceOf(inv: Invoice, ids: number[]): { text: string; score: number } | null {
+  if (!ids.length || !inv.ocr) return null;
+  const text = textOf(inv, ids);
+  return text ? { text, score: minScore(inv, ids) } : null;
+}
+
 const minScore = (inv: Invoice, ids: number[]) => Math.min(1, ...ids.map((i) => inv.ocr?.lines[i]?.score ?? 1));
 const textOf = (inv: Invoice, ids: number[]) => ids.map((i) => inv.ocr?.lines[i]?.text).filter(Boolean).join(" ");
 
@@ -63,7 +72,19 @@ export function analyze(inv: Invoice): Analysis {
   const flags: Flag[] = [];
   const d = inv.decisions, e = inv.edits;
   const cur = inv.currency;
-  const value = (k: FieldKey) => (e[k] !== undefined ? (NUMERIC.includes(k) ? Number(e[k]) : e[k]) : (inv[k]?.value ?? null));
+  const suggested = inv.suggest?.vendor && e.vendor === undefined && inv.vendor.value !== inv.suggest.vendor ? inv.suggest.vendor : null;
+  const value = (k: FieldKey) =>
+    e[k] !== undefined ? (NUMERIC.includes(k) ? Number(e[k]) : e[k])
+    : k === "vendor" && suggested && d["suggest:vendor"] === "use" ? suggested
+    : (inv[k]?.value ?? null);
+
+  // proactive: things noticed across invoices, asked before anything else
+  if (inv.suggest?.duplicateOf)
+    flags.push({ id: "duplicate", title: "This may be a duplicate", detail: "Another invoice in your list has the same vendor and invoice number.", open: inv.suggest.duplicateOf,
+      options: [{ id: "ok", label: "It's a different invoice" }, { id: "reject", label: "Reject this copy" }] });
+  if (suggested)
+    flags.push({ id: "suggest:vendor", field: "vendor", kind: "suggestion", title: "Use the name you used before?", detail: `You corrected "${inv.vendor.value}" to "${suggested}" last time.`,
+      options: [{ id: "use", label: `Use "${suggested}"` }, { id: "keep", label: "Keep as read" }] });
 
   // header: missing total, values OCR wasn't sure about
   if (value("total") === null)

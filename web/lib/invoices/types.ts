@@ -16,6 +16,14 @@ export type Line = {
 
 export type Stage = "reading" | "understanding" | "review" | "done" | "rejected" | "failed";
 
+/** One model attempt while understanding: shown so a switch to a backup model is explained, not hidden. */
+export type Attempt = { model: string; ok: boolean; ms: number; reason?: string };
+
+/** A point to roll back to: everything a person can change on an invoice. */
+export type Snapshot = { label: string; at: string; status: Stage; edits: Record<string, string>; decisions: Record<string, string> };
+
+export type Feedback = { vote: "up" | "down"; reasons: string[]; note?: string; at: string };
+
 export type Invoice = {
   id: string;
   name: string; // file name
@@ -39,4 +47,10 @@ export type Invoice = {
   edits: Record<string, string>; // "total", "vendor", "line:3:amount"... -> value typed by the user
   resolvedAt?: string;
   error?: string;
+  understandStartedAt?: number; // ms timestamp, for the live timer on the waiting screen
+  attempts?: Attempt[]; // models tried, in order
+  history?: Snapshot[]; // undo stack, newest last
+  feedback?: Feedback;
+  /** Things the app noticed and suggests, worked out when reading finishes. */
+  suggest?: { vendor?: string; duplicateOf?: string };
 };

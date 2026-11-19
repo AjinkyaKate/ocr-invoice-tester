@@ -1,13 +1,14 @@
 "use client";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { analyze, boxFor, initials, money, niceDate, type Analysis, type FieldKey, type Flag } from "@/lib/invoices/analyze";
+import { analyze, boxFor, initials, money, niceDate, sourceOf, FIELD_LABEL, type Analysis, type FieldKey, type Flag } from "@/lib/invoices/analyze";
 import { actions, useInvoices } from "@/lib/invoices/store";
 import type { Box, Field, Invoice, Line } from "@/lib/invoices/types";
 import { ActionButton } from "@/components/ui/action-button";
 import { BarsTheme } from "@/components/ui/bars-theme";
 import { useMedia } from "./bits";
 import { go } from "./nav";
+import { Explain, Feedback, Steps } from "./ai-ux";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease } } };
@@ -37,6 +38,7 @@ export function ReviewView({ id }: { id: string }) {
 
   const editable = inv?.status === "review";
   const next = invoices.find((i) => i.status === "review" && i.id !== id);
+  const waiting = invoices.filter((i) => i.status === "review" && i.id !== id).length;
   const approve = () => {
     if (!inv || unresolved.length) return;
     actions.approve(inv.id);
@@ -48,6 +50,7 @@ export function ReviewView({ id }: { id: string }) {
     const onKey = (e: KeyboardEvent) => {
       if (!inv || (e.target as HTMLElement).closest("input, textarea")) return;
       if (e.key === "Escape") { if (viewer) setViewer(null); else go(null); return; }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); actions.undo(inv.id); return; }
       if (!editable || !a) return;
       const open = a.unresolved;
       if (["j", "k", "ArrowDown", "ArrowUp"].includes(e.key)) keyed.current = true;
@@ -55,7 +58,7 @@ export function ReviewView({ id }: { id: string }) {
       if (e.key === "k" || e.key === "ArrowUp") { e.preventDefault(); setFocus((f) => Math.max(f - 1, 0)); }
       const n = Number(e.key);
       const f = open[Math.min(focus, open.length - 1)];
-      if (f && n >= 1 && n <= f.options.length && f.options[n - 1].id !== "edit") actions.decide(inv.id, f.id, f.options[n - 1].id);
+      if (f && n >= 1 && n <= f.options.length && f.options[n - 1].id !== "edit") answer(inv, f, f.options[n - 1].id);
       if (e.key === "Enter" && !open.length && !(e.target as HTMLElement).closest("button")) approve();
     };
     window.addEventListener("keydown", onKey);
@@ -97,7 +100,15 @@ export function ReviewView({ id }: { id: string }) {
     <div>
       <div className="flex h-8 items-center gap-3 text-sm">
         <button onClick={() => go(null)} className="text-muted-foreground hover:text-foreground">← All invoices</button>
-        {(inv.status === "done" || inv.status === "rejected") && <span className="ms-auto text-muted-foreground">{inv.status === "done" ? "Approved" : "Rejected"}</span>}
+        <div className="ms-auto flex items-center gap-3">
+          {inv.history?.length ? (
+            <button onClick={() => actions.undo(inv.id)} title="Undo (⌘Z)" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+              <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h6.5a3 3 0 0 1 0 6H8" /><path d="M6.5 3.5 4 6l2.5 2.5" /></svg>
+              <span className="hidden sm:inline">Undo {inv.history.at(-1)!.label.toLowerCase()}</span><span className="sm:hidden">Undo</span>
+            </button>
+          ) : null}
+          {(inv.status === "done" || inv.status === "rejected") && <span className="text-muted-foreground">{inv.status === "done" ? "Approved" : "Rejected"}</span>}
+        </div>
       </div>
 
       {/* one layout that changes shape: the invoice alone while it is read, then the invoice + details */}
@@ -105,12 +116,14 @@ export function ReviewView({ id }: { id: string }) {
         <motion.div layout transition={{ duration: 0.6, ease }} className={shown ? "lg:sticky lg:top-6 lg:self-start" : "flex w-full flex-col items-center"}>
           <Doc inv={inv} shown={shown} final={!!a} lit={lit} setHover={setHover} compact={!!shown && !wide} onOpen={(key) => setViewer({ key })} />
           {!shown && <Status inv={inv} />}
+          {shown && <Source inv={inv} shown={shown} lit={lit} final={!!a} />}
         </motion.div>
 
         {shown && (
           <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.08, delayChildren: 0.25 } } }} className="min-w-0 space-y-10">
             <motion.div variants={item}>
               <Hero inv={inv} shown={shown} a={a} live={live} cur={cur} editable={editable} lit={lit} setHover={setHover} />
+              {live && <div className="mt-4"><Steps inv={inv} compact /></div>}
             </motion.div>
 
             {a && (
@@ -130,6 +143,13 @@ export function ReviewView({ id }: { id: string }) {
               <Items inv={inv} shown={shown} live={live} cur={cur} editable={editable} lit={lit} setHover={setHover} rowRefs={rowRefs}
                 onShow={touch || !wide ? (key) => setViewer({ key }) : undefined} />
             </motion.section>
+
+            {a && (
+              <motion.section variants={item} className="space-y-6">
+                <Feedback inv={inv} />
+                <Explain inv={inv} a={a} />
+              </motion.section>
+            )}
           </motion.div>
         )}
       </motion.div>
@@ -139,10 +159,22 @@ export function ReviewView({ id }: { id: string }) {
           <motion.div initial={{ y: 80 }} animate={{ y: 0 }} exit={{ y: 80 }} transition={{ duration: 0.45, ease, delay: 0.5 }}
             className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/90 backdrop-blur">
             <div className="mx-auto flex max-w-6xl items-center justify-end gap-2 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-6">
-              <button onClick={() => { actions.reject(inv.id); go(null); }} className="flex-1 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground sm:flex-none">Reject</button>
+              <p className="me-auto hidden text-xs text-faint sm:block">Nothing is saved to your books until you approve.</p>
+              <button onClick={() => { actions.reject(inv.id); go(next?.id); }} className="flex-1 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground sm:flex-none">Reject</button>
               <ActionButton size="sm" className="flex-[2] sm:flex-none" disabled={unresolved.length > 0} minPendingMs={400}
                 idleLabel={unresolved.length ? `${unresolved.length} to check` : "Approve"} pendingLabel="Saving…" successLabel="Approved"
                 onAction={async () => { await new Promise((r) => setTimeout(r, 250)); approve(); }} />
+            </div>
+          </motion.div>
+        )}
+        {(inv.status === "done" || inv.status === "rejected") && (
+          <motion.div initial={{ y: 80 }} animate={{ y: 0 }} exit={{ y: 80 }} transition={{ duration: 0.45, ease }}
+            className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/90 backdrop-blur">
+            <div className="mx-auto flex max-w-6xl items-center justify-end gap-2 px-4 py-3 sm:px-6">
+              <button onClick={() => actions.reopen(inv.id)} className="me-auto rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground">Reopen to change it</button>
+              {next
+                ? <button onClick={() => go(next.id)} className="rounded-lg bg-foreground px-3 py-2 text-sm text-background">Next: {waiting} waiting for you →</button>
+                : <button onClick={() => go(null)} className="rounded-lg px-3 py-2 text-sm text-foreground hover:bg-secondary">All done · back to invoices</button>}
             </div>
           </motion.div>
         )}
@@ -153,6 +185,12 @@ export function ReviewView({ id }: { id: string }) {
       </AnimatePresence>
     </div>
   );
+}
+
+/** Answer a question. A couple of answers do more than record the choice. */
+function answer(inv: Invoice, f: Flag, option: string) {
+  if (option === "reject") { actions.reject(inv.id); return; }
+  actions.decide(inv.id, f.id, option, `Answered "${f.title}"`);
 }
 
 const pos = ([x, y, w, h]: Box, pad = 0) => ({ left: `${(x - pad) * 100}%`, top: `${(y - pad) * 100}%`, width: `${(w + 2 * pad) * 100}%`, height: `${(h + 2 * pad) * 100}%` });
@@ -383,19 +421,28 @@ function Status({ inv }: { inv: Invoice }) {
         <button onClick={() => actions.retry(inv.id)} className="mt-2 text-foreground underline underline-offset-4">Try again</button>
       </div>
     );
-  const n = inv.ocr?.lines.length ?? 0;
-  const label = inv.status === "reading" ? "Reading invoice" : "Understanding it";
+  return <div className="mt-6 w-full max-w-sm"><Steps inv={inv} /></div>;
+}
+
+/** Grounding: under the image, the exact printed text the highlighted value was read from and how clear it was. */
+function Source({ inv, shown, lit, final }: { inv: Invoice; shown: Shown; lit: string | null; final: boolean }) {
+  let label = "", ids: number[] = [];
+  if (lit?.startsWith("f:")) { const k = lit.slice(2) as FieldKey; label = FIELD_LABEL[k]; ids = shown.fields[k]?.lines ?? []; }
+  if (lit?.startsWith("i:")) { const i = Number(lit.slice(2)); label = `Line ${i + 1}`; ids = shown.lines[i]?.lines ?? []; }
+  const src = lit ? sourceOf(inv, ids) : null;
+  const pct = src ? Math.round(src.score * 100) : 0;
   return (
-    <div className="mt-6 flex flex-col items-center gap-1 text-sm">
-      <div className="flex items-center gap-2 text-foreground">
-        <BarsTheme state="thinking" volume={0.5} size={16} />
-        <AnimatePresence mode="wait">
-          <motion.span key={label} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }}>{label}</motion.span>
-        </AnimatePresence>
-      </div>
-      <AnimatePresence>
-        {n > 0 && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-faint">{n} pieces of text found</motion.span>}
-      </AnimatePresence>
+    <div className="mt-3 min-h-10 px-1 text-xs" aria-live="polite">
+      {src ? (
+        <p className="text-muted-foreground">
+          <span className="text-foreground">{label}</span> read from <span className="rounded bg-[#1100ff]/8 px-1 font-mono text-[11px] text-foreground">{src.text.length > 90 ? src.text.slice(0, 90) + "…" : src.text}</span>
+          <span className={pct < 85 ? " text-amber-700 dark:text-amber-400" : ""}> · {pct}% clear{pct < 85 ? ", worth a look" : ""}</span>
+        </p>
+      ) : lit ? (
+        <p className="text-muted-foreground">{label ? `${label}: ` : ""}not printed on the document, so nothing to point at.</p>
+      ) : (
+        <p className="text-faint">{final ? "Point at or tap any value to see exactly where it was read." : "Values light up on the invoice as they are found."}</p>
+      )}
     </div>
   );
 }
@@ -405,8 +452,20 @@ function Editable({ inv, k, display, raw, numeric, enabled, flag }: { inv: Invoi
   const [editing, setEditing] = useState(false);
   const [v, setV] = useState("");
   if (!enabled) return <>{display}</>;
+  const edited = inv.edits[k] !== undefined;
   if (!editing)
-    return <button onClick={() => { setV(raw === null || raw === undefined ? "" : String(raw)); setEditing(true); }} className="max-w-full rounded-sm text-left decoration-dotted underline-offset-4 hover:underline">{display}</button>;
+    return (
+      <>
+        <button onClick={() => { setV(raw === null || raw === undefined ? "" : String(raw)); setEditing(true); }} title="Click to correct"
+          className="max-w-full rounded-sm text-left decoration-dotted underline-offset-4 hover:underline">{display}</button>
+        {edited && (
+          <button onClick={() => actions.revert(inv.id, k)} title="Edited by you. Click to go back to what was read."
+            className="ms-1.5 inline-flex translate-y-[-0.1em] items-center gap-0.5 rounded-full bg-[#1100ff]/8 px-1.5 align-middle text-[10px] leading-4 tracking-normal text-[#1100ff] hover:bg-[#1100ff]/15 dark:text-[#8f8aff]">
+            edited <span aria-hidden>↺</span>
+          </button>
+        )}
+      </>
+    );
   const save = () => {
     const t = v.trim();
     if (t && t !== String(raw ?? "") && (!numeric || Number.isFinite(Number(t)))) actions.edit(inv.id, k, t, flag);
@@ -424,11 +483,17 @@ function FlagCard({ f, inv, focused, refEl, onHover }: { f: Flag; inv: Invoice; 
   const [editing, setEditing] = useState(false);
   const [v, setV] = useState(f.edit?.current ?? "");
   const save = () => { if (f.edit && v.trim()) { actions.edit(inv.id, f.edit.key, v.trim(), f.id); setEditing(false); } };
+  const tip = f.kind === "suggestion";
   return (
     <div ref={refEl} onMouseEnter={() => onHover(true)} onMouseLeave={() => onHover(false)}
-      className={`rounded-xl border bg-amber-500/[0.04] px-4 py-3 text-sm transition-colors ${focused ? "border-amber-500/60" : "border-amber-500/25"}`}>
-      <p className="flex items-center gap-2 text-foreground"><span className="size-1.5 rounded-full bg-amber-500" />{f.title}</p>
-      <p className="mt-0.5 ps-3.5 text-muted-foreground">{f.detail}</p>
+      className={`rounded-xl border px-4 py-3 text-sm transition-colors ${tip
+        ? `bg-[#1100ff]/[0.03] ${focused ? "border-[#1100ff]/50" : "border-[#1100ff]/20"}`
+        : `bg-amber-500/[0.04] ${focused ? "border-amber-500/60" : "border-amber-500/25"}`}`}>
+      <p className="flex items-center gap-2 text-foreground">
+        <span className={`size-1.5 rounded-full ${tip ? "bg-[#1100ff]" : "bg-amber-500"}`} />{f.title}
+        {tip && <span className="text-xs text-faint">Suggestion</span>}
+      </p>
+      <p className="mt-0.5 ps-3.5 text-muted-foreground">{f.detail}{f.open && <> <button onClick={() => go(f.open)} className="text-foreground underline underline-offset-4">Open the other one</button></>}</p>
       <div className="mt-2.5 flex flex-wrap gap-1.5 ps-3.5">
         {editing ? (
           <>
@@ -438,7 +503,7 @@ function FlagCard({ f, inv, focused, refEl, onHover }: { f: Flag; inv: Invoice; 
             <button onClick={save} className="rounded-md bg-foreground px-2.5 py-1 text-xs text-background">Save</button>
           </>
         ) : f.options.map((o) => (
-          <button key={o.id} onClick={() => (o.id === "edit" ? setEditing(true) : actions.decide(inv.id, f.id, o.id))}
+          <button key={o.id} onClick={() => (o.id === "edit" ? setEditing(true) : answer(inv, f, o.id))}
             className="rounded-md border border-border bg-background px-2.5 py-1 text-xs text-foreground hover:bg-secondary">{o.label}</button>
         ))}
       </div>
